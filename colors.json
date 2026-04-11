@@ -1,0 +1,26 @@
+{
+  "theme": {
+    "surface": {
+      "level0": "#121212",
+      "level1": "#1e1e1e",
+      "level2": "#2c2c2c"
+    },
+    "outline": "#3a3a3a",
+    "typography": {
+      "primary": "#ffffff",
+      "secondary": "#cccccc",
+      "tertiary": "#888888",
+      "disabled": "#555555"
+    },
+    "semantic": {
+      "error": "#9b1b30",
+      "warning": "#ffb74d",
+      "success": "#4caf50",
+      "info": "#64b5f6"
+    },
+    "interaction": {
+      "accent": "#ffffff",
+      "hoverOverlay": "rgba(255, 255, 255, 0.05)"
+    }
+  }
+}
