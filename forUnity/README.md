@@ -13,7 +13,8 @@
 4. ../colors.json                    ← カラー実値（#RRGGBB）
 5. forUnity/UniTexTheme_template.md  ← テーマクラス C# コード（コピー元）
 6. forUnity/techniques.md            ← IMGUI 固有の実装テクニック詳説
-7. forUnity/window_structure_template.md ← ウィンドウ全体の骨格（コピー元）
+7. forUnity/window_structure_template.md     ← EditorWindow 全体の骨格（コピー元）
+8. forUnity/inspector_structure_template.md  ← CustomEditor (Inspector) の骨格（コピー元）
 ```
 
 ---
@@ -25,6 +26,7 @@
 | `README.md` | このファイル。概要と全体手順 |
 | `UniTexTheme_template.md` | コピーして使うテーマクラス全文 |
 | `window_structure_template.md` | EditorWindow の骨格・DrawSection などヘルパー全文 |
+| `inspector_structure_template.md` | CustomEditor (Inspector) の骨格・InspectorRootStyle パターン |
 | `techniques.md` | IMGUI 固有の実装テクニック詳説 |
 
 ---
