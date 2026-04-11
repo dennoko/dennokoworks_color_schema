@@ -9,7 +9,7 @@
     "typography": {
       "primary": "#ffffff",
       "secondary": "#cccccc",
-      "tertiary": "#888888",
+      "tertiary": "#aaaaaa",
       "disabled": "#555555"
     },
     "semantic": {

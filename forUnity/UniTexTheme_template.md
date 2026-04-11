@@ -35,7 +35,7 @@ namespace YourNamespace   // ← 変更する
         // theme.typography
         public static readonly Color TextPrimary   = Hex(0xffffff);
         public static readonly Color TextSecondary = Hex(0xcccccc);
-        public static readonly Color TextTertiary  = Hex(0x888888);
+        public static readonly Color TextTertiary  = Hex(0xaaaaaa);
         public static readonly Color TextDisabled  = Hex(0x555555);
 
         // theme.semantic
