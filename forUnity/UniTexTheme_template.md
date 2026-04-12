@@ -113,13 +113,13 @@ namespace YourNamespace   // ← 変更する
             CardStyle.normal.background = _texCard;
             CardStyle.border  = new RectOffset(1, 1, 1, 1);
             CardStyle.padding = new RectOffset(10, 10, 8, 8);
-            CardStyle.margin  = new RectOffset(4, 4, 6, 6);   // 上下 6px の余白でカード間を分離
+            CardStyle.margin  = new RectOffset(8, 8, 8, 8);   // 8px の余白でカード間を分離
 
             CardOuterStyle = new GUIStyle();
             CardOuterStyle.normal.background = _texCard;
             CardOuterStyle.border  = new RectOffset(1, 1, 1, 1);
             CardOuterStyle.padding = new RectOffset(0, 0, 0, 0);
-            CardOuterStyle.margin  = new RectOffset(4, 4, 6, 6);
+            CardOuterStyle.margin  = new RectOffset(8, 8, 8, 8);
 
             ToolbarStyle = new GUIStyle();
             ToolbarStyle.normal.background = _texSurface2;
