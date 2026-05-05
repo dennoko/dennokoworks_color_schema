@@ -10,7 +10,7 @@ dennoko.dev カラースキーマを **CustomEditor (Inspector)** に適用す�
 | 項目 | EditorWindow | CustomEditor (Inspector) |
 |---|---|---|
 | エントリーポイント | `OnGUI()` | `OnInspectorGUI()` |
-| 背景の塗り方 | `EditorGUI.DrawRect(new Rect(0,0,position.width,position.height), ...)` | `GUILayout.BeginVertical(InspectorRootStyle)` ラップ |
+| 背景の塗り方 | `EditorGUI.DrawRect(new Rect(0,0,position.width,position.height), ...)` | `GUILayout.BeginVertical(InspectorRootStyle)` + `overflow` 設定 |
 | `position` プロパティ | 使える | **使えない** |
 | ウィンドウ幅 | `position.width` | `EditorGUIUtility.currentViewWidth` |
 | ボタン推奨サイズ | `fixedHeight 34 / 26` | **`fixedHeight 30 / 24`**（インスペクターは幅が狭い） |
@@ -22,7 +22,8 @@ dennoko.dev カラースキーマを **CustomEditor (Inspector)** に適用す�
 ## 背景塗りのパターン — InspectorRootStyle
 
 EditorWindow では `position.width/height` を使って `EditorGUI.DrawRect` でウィンドウ全面を塗れる。
-インスペクターでは同等の手段がないため、**ネガティブマージンを持つ GUIStyle** でラップする。
+インスペクターでは同等の手段がないため、**`overflow` プロパティを設定した GUIStyle** でラップする。
+（ネガティブマージンのみでは Unity バージョンによって隙間が生じたり、手動描画（DrawRect）を併用するとスクロール時にガタつきが発生したりするため、`overflow` が推奨される）
 
 ### テーマクラスへの追加
 
@@ -32,8 +33,9 @@ public static GUIStyle InspectorRootStyle { get; private set; }
 
 InspectorRootStyle = new GUIStyle();
 InspectorRootStyle.normal.background = _texSurface0;   // Surface0 で全体を塗る
-InspectorRootStyle.margin  = new RectOffset(-4, -4, -4, -4); // Inspector 内側の余白を打ち消す
-InspectorRootStyle.padding = new RectOffset(4, 4, 8, 8);     // 内側に適切な余白を戻す
+InspectorRootStyle.margin   = new RectOffset(0, 0, 0, 0);   // マージンは標準に従う
+InspectorRootStyle.padding  = new RectOffset(10, 10, 8, 8); // 内側に適切な余白を確保
+InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0); // 重要: 背景描画領域だけを左右に広げる
 ```
 
 ### OnInspectorGUI での使い方
@@ -230,8 +232,10 @@ Unity のデフォルト背景（ライトテーマなら白、ダークテー�
 
 ### Q: `InspectorRootStyle` のラップがインスペクター端まで届かず隙間が生じる
 
-`margin = new RectOffset(-4, -4, -4, -4)` の値が環境によって足りないことがある。
-`-6` や `-8` に増やして調整する。
+`margin = new RectOffset(-4, -4, -4, -4)` のような負のマージン調整だけでは、Unity の環境や DPI によって限界がある。
+
+→ **`overflow` プロパティ** を使用する。
+`InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0)` のように設定することで、レイアウトを崩さずに背景の描画領域だけを外側へ広げ、確実に端まで塗りつぶすことができる。
 
 ### Q: `serializedObject.ApplyModifiedProperties()` を呼ばずに `EndVertical` を先に呼んでしまった
 
