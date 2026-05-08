@@ -249,6 +249,27 @@ Unity のデフォルト背景（ライトテーマなら白、ダークテー�
 `_initialized` static フラグはドメインリロードで `false` にリセットされるため、
 `Initialize()` を `OnInspectorGUI` の先頭で毎フレーム呼んでいれば自動的に再構築される。
 
+### Q: カスタムボタンスタイルが古めかしい角丸ボタンになったり、意図しないグラデーションやシャドウがかかる
+
+フラットでスクエアなデザイン（dennoko.dev スタイル）のボタンを作りたい場合、`new GUIStyle(GUI.skin.button)` のように **標準のボタンスタイルを継承してはいけません。**
+
+Unity の標準ボタンスタイルには、あらかじめ `scaledBackgrounds` やネイティブの角丸、ドロップシャドウの描画設定が組み込まれているため、単純に `normal.background` にフラットなテクスチャを上書きしただけでは元の装飾と混ざって意図しない見た目になります。
+
+→ **対処法:** `GUI.skin.button` を継承せず、まっさらな `new GUIStyle()` からスタイルを構築します。その際、継承をやめることで失われる余白（`margin` や `padding`）を再設定する必要があります。
+
+```csharp
+// ❌ 悪い例: Unity の標準装飾が混ざり、角丸やグラデーションが残ってしまう
+ActionButtonStyle = new GUIStyle(GUI.skin.button);
+ActionButtonStyle.normal.background = _texAccentCard;
+
+// 🟢 良い例: まっさらな状態からフラットなスタイルを構築する
+ActionButtonStyle = new GUIStyle();
+ActionButtonStyle.normal.background = _texAccentCard;
+ActionButtonStyle.border  = new RectOffset(1, 1, 1, 1);
+ActionButtonStyle.margin  = new RectOffset(4, 4, 2, 2);  // 継承をやめたので明示的に指定する
+ActionButtonStyle.padding = new RectOffset(2, 2, 2, 2);  // 継承をやめたので明示的に指定する
+```
+
 ---
 
 ## ファイル参照マップ
