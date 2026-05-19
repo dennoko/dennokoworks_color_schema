@@ -153,37 +153,72 @@ bool newToggle = EditorGUILayout.ToggleLeft(title.ToUpper(), toggle, headerStyle
 
 ## 5. ボタンのスタイリング
 
+> **重要:** `new GUIStyle(GUI.skin.button)` のように標準ボタンスタイルを継承してはいけない。
+> Unity の標準ボタンには `scaledBackgrounds`・角丸・グラデーションが組み込まれており、
+> フラットなテクスチャを上書きしても元の装飾が残ってしまう。
+> **EditorWindow でも CustomEditor でも `new GUIStyle()` からすべてのプロパティを明示的に設定する。**
+
 ### Primary Action（Apply & Save など）
 
 ```csharp
-var actionButtonStyle = new GUIStyle(GUI.skin.button);
+// ❌ 悪い例: 標準ボタンを継承すると角丸・グラデーションが混ざる
+// var actionButtonStyle = new GUIStyle(GUI.skin.button);
+
+// ✅ 良い例: まっさらな GUIStyle からフラットなスタイルを構築する
+var actionButtonStyle = new GUIStyle();
 actionButtonStyle.normal.background  = MakeBorderedTex(Surface2, Outline);
 actionButtonStyle.normal.textColor   = TextPrimary;
 actionButtonStyle.hover.background   = MakeTex(Color.Lerp(Surface2, Color.white, 0.07f));
 actionButtonStyle.hover.textColor    = TextPrimary;
 actionButtonStyle.active.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.15f));
 actionButtonStyle.active.textColor   = TextPrimary;
-actionButtonStyle.border     = new RectOffset(1, 1, 1, 1);
-actionButtonStyle.fontSize   = 13;
-actionButtonStyle.fontStyle  = FontStyle.Bold;
-actionButtonStyle.fixedHeight = 34;
-actionButtonStyle.alignment  = TextAnchor.MiddleCenter;
+actionButtonStyle.border       = new RectOffset(1, 1, 1, 1);
+actionButtonStyle.margin       = new RectOffset(4, 4, 2, 2); // 継承をやめたので明示的に指定
+actionButtonStyle.padding      = new RectOffset(6, 6, 3, 3); // 継承をやめたので明示的に指定
+actionButtonStyle.fontSize     = 13;
+actionButtonStyle.fontStyle    = FontStyle.Bold;
+actionButtonStyle.fixedHeight  = 34;
+actionButtonStyle.alignment    = TextAnchor.MiddleCenter;
+actionButtonStyle.stretchWidth = true; // GUILayout で幅を自動拡張するために必要
 ```
 
 ### Secondary Action（Reset All など）
 
 ```csharp
-var secondaryButtonStyle = new GUIStyle(GUI.skin.button);
+var secondaryButtonStyle = new GUIStyle();
 secondaryButtonStyle.normal.background = MakeBorderedTex(Surface1, Outline);
 secondaryButtonStyle.normal.textColor  = TextSecondary;
 secondaryButtonStyle.hover.background  = MakeBorderedTex(Surface2, Outline);
 secondaryButtonStyle.hover.textColor   = TextPrimary;
-secondaryButtonStyle.border    = new RectOffset(1, 1, 1, 1);
-secondaryButtonStyle.fontSize  = 11;
-secondaryButtonStyle.fixedHeight = 26;
+secondaryButtonStyle.active.background = MakeTex(Color.Lerp(Surface1, Color.white, 0.10f));
+secondaryButtonStyle.active.textColor  = TextPrimary;
+secondaryButtonStyle.border       = new RectOffset(1, 1, 1, 1);
+secondaryButtonStyle.margin       = new RectOffset(4, 4, 2, 2);
+secondaryButtonStyle.padding      = new RectOffset(6, 6, 3, 3);
+secondaryButtonStyle.fontSize     = 11;
+secondaryButtonStyle.fixedHeight  = 26;
+secondaryButtonStyle.alignment    = TextAnchor.MiddleCenter;
+secondaryButtonStyle.stretchWidth = true;
 ```
 
-> `GUI.skin.button` を継承することで、Unity のボタンイベント処理（クリック判定など）を引き継ぎながら見た目だけを上書きできる。
+### Mini Button（Reset / Select など小さなボタン）
+
+```csharp
+// EditorStyles.miniButton* も同様に継承してはいけない
+var miniButtonStyle = new GUIStyle();
+miniButtonStyle.normal.background = MakeBorderedTex(Surface2, Outline);
+miniButtonStyle.normal.textColor  = TextTertiary;
+miniButtonStyle.hover.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+miniButtonStyle.hover.textColor   = TextSecondary;
+miniButtonStyle.active.background = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+miniButtonStyle.active.textColor  = TextPrimary;
+miniButtonStyle.border      = new RectOffset(1, 1, 1, 1);
+miniButtonStyle.margin      = new RectOffset(2, 2, 1, 1);
+miniButtonStyle.padding     = new RectOffset(4, 4, 1, 2);
+miniButtonStyle.fontSize    = 10;
+miniButtonStyle.fixedHeight = 16;
+miniButtonStyle.alignment   = TextAnchor.MiddleCenter;
+```
 
 ---
 

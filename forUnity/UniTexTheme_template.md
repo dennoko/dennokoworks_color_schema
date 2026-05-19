@@ -156,42 +156,82 @@ namespace YourNamespace   // ← 変更する
 
             // ── Buttons ──────────────────────────────────────────────────────
 
-            ActionButtonStyle = new GUIStyle(GUI.skin.button);
+            // GUI.skin.button / EditorStyles.miniButton* を継承すると Unity の角丸・グラデーション・
+            // scaledBackgrounds が引き継がれてフラットなテクスチャと混ざる。
+            // そのため new GUIStyle() から全プロパティを明示的に構築する。
+
+            ActionButtonStyle = new GUIStyle();
             ActionButtonStyle.normal.background  = _texAccentCard;
             ActionButtonStyle.normal.textColor   = TextPrimary;
             ActionButtonStyle.hover.background   = MakeTex(Color.Lerp(Surface2, Color.white, 0.07f));
             ActionButtonStyle.hover.textColor    = TextPrimary;
             ActionButtonStyle.active.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.15f));
             ActionButtonStyle.active.textColor   = TextPrimary;
-            ActionButtonStyle.border     = new RectOffset(1, 1, 1, 1);
-            ActionButtonStyle.fontSize   = 13;
-            ActionButtonStyle.fontStyle  = FontStyle.Bold;
-            ActionButtonStyle.fixedHeight = 34;
-            ActionButtonStyle.alignment  = TextAnchor.MiddleCenter;
+            ActionButtonStyle.border       = new RectOffset(1, 1, 1, 1);
+            ActionButtonStyle.margin       = new RectOffset(4, 4, 2, 2);
+            ActionButtonStyle.padding      = new RectOffset(6, 6, 3, 3);
+            ActionButtonStyle.fontSize     = 13;
+            ActionButtonStyle.fontStyle    = FontStyle.Bold;
+            ActionButtonStyle.fixedHeight  = 34;
+            ActionButtonStyle.alignment    = TextAnchor.MiddleCenter;
+            ActionButtonStyle.stretchWidth = true;
 
-            SecondaryButtonStyle = new GUIStyle(GUI.skin.button);
+            SecondaryButtonStyle = new GUIStyle();
             SecondaryButtonStyle.normal.background = MakeBorderedTex(Surface1, Outline);
             SecondaryButtonStyle.normal.textColor  = TextSecondary;
             SecondaryButtonStyle.hover.background  = _texAccentCard;
             SecondaryButtonStyle.hover.textColor   = TextPrimary;
             SecondaryButtonStyle.active.background = MakeTex(Color.Lerp(Surface1, Color.white, 0.10f));
             SecondaryButtonStyle.active.textColor  = TextPrimary;
-            SecondaryButtonStyle.border     = new RectOffset(1, 1, 1, 1);
-            SecondaryButtonStyle.fontSize   = 11;
-            SecondaryButtonStyle.fixedHeight = 26;
-            SecondaryButtonStyle.alignment  = TextAnchor.MiddleCenter;
+            SecondaryButtonStyle.border       = new RectOffset(1, 1, 1, 1);
+            SecondaryButtonStyle.margin       = new RectOffset(4, 4, 2, 2);
+            SecondaryButtonStyle.padding      = new RectOffset(6, 6, 3, 3);
+            SecondaryButtonStyle.fontSize     = 11;
+            SecondaryButtonStyle.fixedHeight  = 26;
+            SecondaryButtonStyle.alignment    = TextAnchor.MiddleCenter;
+            SecondaryButtonStyle.stretchWidth = true;
 
-            MiniButtonStyle = new GUIStyle(EditorStyles.miniButton);
-            MiniButtonStyle.normal.textColor = TextTertiary;
-            MiniButtonStyle.hover.textColor  = TextSecondary;
+            MiniButtonStyle = new GUIStyle();
+            MiniButtonStyle.normal.background = _texAccentCard;
+            MiniButtonStyle.normal.textColor  = TextTertiary;
+            MiniButtonStyle.hover.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+            MiniButtonStyle.hover.textColor   = TextSecondary;
+            MiniButtonStyle.active.background = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+            MiniButtonStyle.active.textColor  = TextPrimary;
+            MiniButtonStyle.border      = new RectOffset(1, 1, 1, 1);
+            MiniButtonStyle.margin      = new RectOffset(2, 2, 1, 1);
+            MiniButtonStyle.padding     = new RectOffset(4, 4, 1, 2);
+            MiniButtonStyle.fontSize    = 10;
+            MiniButtonStyle.fixedHeight = 16;
+            MiniButtonStyle.alignment   = TextAnchor.MiddleCenter;
 
-            MiniButtonLeftStyle = new GUIStyle(EditorStyles.miniButtonLeft);
-            MiniButtonLeftStyle.normal.textColor = TextTertiary;
-            MiniButtonLeftStyle.hover.textColor  = TextSecondary;
+            MiniButtonLeftStyle = new GUIStyle();
+            MiniButtonLeftStyle.normal.background = _texAccentCard;
+            MiniButtonLeftStyle.normal.textColor  = TextTertiary;
+            MiniButtonLeftStyle.hover.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+            MiniButtonLeftStyle.hover.textColor   = TextSecondary;
+            MiniButtonLeftStyle.active.background = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+            MiniButtonLeftStyle.active.textColor  = TextPrimary;
+            MiniButtonLeftStyle.border      = new RectOffset(1, 1, 1, 1);
+            MiniButtonLeftStyle.margin      = new RectOffset(2, 2, 1, 1);
+            MiniButtonLeftStyle.padding     = new RectOffset(4, 4, 1, 2);
+            MiniButtonLeftStyle.fontSize    = 10;
+            MiniButtonLeftStyle.fixedHeight = 16;
+            MiniButtonLeftStyle.alignment   = TextAnchor.MiddleCenter;
 
-            MiniButtonRightStyle = new GUIStyle(EditorStyles.miniButtonRight);
-            MiniButtonRightStyle.normal.textColor = TextTertiary;
-            MiniButtonRightStyle.hover.textColor  = TextSecondary;
+            MiniButtonRightStyle = new GUIStyle();
+            MiniButtonRightStyle.normal.background = _texAccentCard;
+            MiniButtonRightStyle.normal.textColor  = TextTertiary;
+            MiniButtonRightStyle.hover.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+            MiniButtonRightStyle.hover.textColor   = TextSecondary;
+            MiniButtonRightStyle.active.background = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+            MiniButtonRightStyle.active.textColor  = TextPrimary;
+            MiniButtonRightStyle.border      = new RectOffset(1, 1, 1, 1);
+            MiniButtonRightStyle.margin      = new RectOffset(2, 2, 1, 1);
+            MiniButtonRightStyle.padding     = new RectOffset(4, 4, 1, 2);
+            MiniButtonRightStyle.fontSize    = 10;
+            MiniButtonRightStyle.fixedHeight = 16;
+            MiniButtonRightStyle.alignment   = TextAnchor.MiddleCenter;
 
             // ── Status Bar ───────────────────────────────────────────────────
 

@@ -180,6 +180,31 @@ private void DrawSeparator()
 
 ## よくある疑問
 
+**Q: ボタンが角丸やグラデーションになる・フラットにならない**
+
+A: `new GUIStyle(GUI.skin.button)` のように Unity の標準ボタンスタイルを継承すると、`scaledBackgrounds` や角丸・ドロップシャドウの描画設定が引き継がれ、フラットなテクスチャを上書きしても意図しない見た目になる。**この問題は EditorWindow でも CustomEditor (Inspector) でも同様に発生する。**
+
+→ **ボタンは `new GUIStyle()` から構築する。** 継承をやめる分、`margin`・`padding`・`stretchWidth` を明示的に設定すること。
+
+```csharp
+// ❌ 悪い例: Unity の標準装飾が混ざり、角丸やグラデーションが残ってしまう
+ActionButtonStyle = new GUIStyle(GUI.skin.button);
+ActionButtonStyle.normal.background = _texAccentCard;
+
+// ✅ 良い例: まっさらな状態からフラットなスタイルを構築する
+ActionButtonStyle = new GUIStyle();
+ActionButtonStyle.normal.background = _texAccentCard;
+ActionButtonStyle.border       = new RectOffset(1, 1, 1, 1);
+ActionButtonStyle.margin       = new RectOffset(4, 4, 2, 2);
+ActionButtonStyle.padding      = new RectOffset(6, 6, 3, 3);
+ActionButtonStyle.stretchWidth = true;  // GUILayout で幅を自動拡張するために必要
+// ... 他プロパティ ...
+```
+
+詳細な解説は `inspector_structure_template.md` の「カスタムボタンスタイルが...」セクションを参照。
+
+---
+
 **Q: ドメインリロード後にテクスチャが壊れる**
 
 A: `EnsureTextures()` で `if (!_texSurface1) _texSurface1 = ...` のように Unity の null 比較を使っていれば、ドメインリロード後に自動再生成される。`_initialized` static フラグもリロードで `false` に戻るため再構築が走る。`techniques.md` の「3. テクスチャのライフサイクル管理」を参照。
