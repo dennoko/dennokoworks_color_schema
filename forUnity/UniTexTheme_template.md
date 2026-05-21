@@ -113,7 +113,7 @@ namespace YourNamespace   // ← 変更する
             CardStyle.normal.background = _texCard;
             CardStyle.border  = new RectOffset(1, 1, 1, 1);
             CardStyle.padding = new RectOffset(10, 10, 8, 8);
-            CardStyle.margin  = new RectOffset(8, 8, 20, 20);  // 左右8px・上下20px の余白でカード間を分離
+            CardStyle.margin  = new RectOffset(8, 8, 8, 8);
 
             CardOuterStyle = new GUIStyle();
             CardOuterStyle.normal.background = _texCard;
@@ -127,71 +127,95 @@ namespace YourNamespace   // ← 変更する
             ToolbarStyle.margin  = new RectOffset(0, 0, 0, 0);
 
             // ── Typography ───────────────────────────────────────────────────
+            // EditorStyles.* を継承した場合、未設定の state はライトモードの色を引き継ぐ。
+            // FixAllTextColors で全 state を明示設定してテーマを固定する。
 
             TitleStyle = new GUIStyle(EditorStyles.boldLabel);
             TitleStyle.fontSize = 14;
-            TitleStyle.normal.textColor = TextPrimary;
+            FixAllTextColors(TitleStyle, TextPrimary);
 
             SectionHeaderStyle = new GUIStyle(EditorStyles.boldLabel);
             SectionHeaderStyle.fontSize = 10;
-            SectionHeaderStyle.normal.textColor = TextTertiary;
+            FixAllTextColors(SectionHeaderStyle, TextTertiary);
             SectionHeaderStyle.margin = new RectOffset(0, 0, 0, 2);
 
             ToggleSectionOnStyle = new GUIStyle(EditorStyles.boldLabel);
             ToggleSectionOnStyle.fontSize = 10;
-            ToggleSectionOnStyle.normal.textColor = TextPrimary;
+            FixAllTextColors(ToggleSectionOnStyle, TextPrimary);
             ToggleSectionOnStyle.margin = new RectOffset(0, 0, 0, 2);
 
             ToggleSectionOffStyle = new GUIStyle(EditorStyles.boldLabel);
             ToggleSectionOffStyle.fontSize = 10;
-            ToggleSectionOffStyle.normal.textColor = TextTertiary;
+            FixAllTextColors(ToggleSectionOffStyle, TextTertiary);
             ToggleSectionOffStyle.margin = new RectOffset(0, 0, 0, 2);
 
             SecondaryTextStyle = new GUIStyle(EditorStyles.label);
-            SecondaryTextStyle.normal.textColor = TextSecondary;
+            FixAllTextColors(SecondaryTextStyle, TextSecondary);
             SecondaryTextStyle.wordWrap = true;
 
             CaptionStyle = new GUIStyle(EditorStyles.miniLabel);
-            CaptionStyle.normal.textColor = TextTertiary;
+            FixAllTextColors(CaptionStyle, TextTertiary);
 
             // ── Buttons ──────────────────────────────────────────────────────
 
-            ActionButtonStyle = new GUIStyle(GUI.skin.button);
+            ActionButtonStyle = new GUIStyle();
             ActionButtonStyle.normal.background  = _texAccentCard;
-            ActionButtonStyle.normal.textColor   = TextPrimary;
             ActionButtonStyle.hover.background   = MakeTex(Color.Lerp(Surface2, Color.white, 0.07f));
-            ActionButtonStyle.hover.textColor    = TextPrimary;
             ActionButtonStyle.active.background  = MakeTex(Color.Lerp(Surface2, Color.white, 0.15f));
-            ActionButtonStyle.active.textColor   = TextPrimary;
             ActionButtonStyle.border     = new RectOffset(1, 1, 1, 1);
             ActionButtonStyle.fontSize   = 13;
             ActionButtonStyle.fontStyle  = FontStyle.Bold;
             ActionButtonStyle.fixedHeight = 34;
             ActionButtonStyle.alignment  = TextAnchor.MiddleCenter;
+            FixAllTextColors(ActionButtonStyle, TextPrimary);
 
-            SecondaryButtonStyle = new GUIStyle(GUI.skin.button);
+            SecondaryButtonStyle = new GUIStyle();
             SecondaryButtonStyle.normal.background = MakeBorderedTex(Surface1, Outline);
-            SecondaryButtonStyle.normal.textColor  = TextSecondary;
             SecondaryButtonStyle.hover.background  = _texAccentCard;
-            SecondaryButtonStyle.hover.textColor   = TextPrimary;
             SecondaryButtonStyle.active.background = MakeTex(Color.Lerp(Surface1, Color.white, 0.10f));
-            SecondaryButtonStyle.active.textColor  = TextPrimary;
             SecondaryButtonStyle.border     = new RectOffset(1, 1, 1, 1);
             SecondaryButtonStyle.fontSize   = 11;
             SecondaryButtonStyle.fixedHeight = 26;
             SecondaryButtonStyle.alignment  = TextAnchor.MiddleCenter;
+            SecondaryButtonStyle.normal.textColor   = TextSecondary;
+            SecondaryButtonStyle.hover.textColor    = TextPrimary;
+            SecondaryButtonStyle.active.textColor   = TextPrimary;
+            SecondaryButtonStyle.focused.textColor  = TextSecondary;
+            SecondaryButtonStyle.onNormal.textColor  = TextSecondary;
+            SecondaryButtonStyle.onHover.textColor   = TextPrimary;
+            SecondaryButtonStyle.onActive.textColor  = TextPrimary;
+            SecondaryButtonStyle.onFocused.textColor = TextSecondary;
 
+            // GUILayout.Toggle として使うとき onNormal が「選択中」状態に使われる
             MiniButtonStyle = new GUIStyle(EditorStyles.miniButton);
-            MiniButtonStyle.normal.textColor = TextTertiary;
-            MiniButtonStyle.hover.textColor  = TextSecondary;
+            MiniButtonStyle.normal.textColor  = TextTertiary;
+            MiniButtonStyle.hover.textColor   = TextSecondary;
+            MiniButtonStyle.active.textColor  = TextSecondary;
+            MiniButtonStyle.focused.textColor = TextTertiary;
+            MiniButtonStyle.onNormal.textColor  = TextPrimary;
+            MiniButtonStyle.onHover.textColor   = TextPrimary;
+            MiniButtonStyle.onActive.textColor  = TextPrimary;
+            MiniButtonStyle.onFocused.textColor = TextPrimary;
 
             MiniButtonLeftStyle = new GUIStyle(EditorStyles.miniButtonLeft);
-            MiniButtonLeftStyle.normal.textColor = TextTertiary;
-            MiniButtonLeftStyle.hover.textColor  = TextSecondary;
+            MiniButtonLeftStyle.normal.textColor  = TextTertiary;
+            MiniButtonLeftStyle.hover.textColor   = TextSecondary;
+            MiniButtonLeftStyle.active.textColor  = TextSecondary;
+            MiniButtonLeftStyle.focused.textColor = TextTertiary;
+            MiniButtonLeftStyle.onNormal.textColor  = TextPrimary;
+            MiniButtonLeftStyle.onHover.textColor   = TextPrimary;
+            MiniButtonLeftStyle.onActive.textColor  = TextPrimary;
+            MiniButtonLeftStyle.onFocused.textColor = TextPrimary;
 
             MiniButtonRightStyle = new GUIStyle(EditorStyles.miniButtonRight);
-            MiniButtonRightStyle.normal.textColor = TextTertiary;
-            MiniButtonRightStyle.hover.textColor  = TextSecondary;
+            MiniButtonRightStyle.normal.textColor  = TextTertiary;
+            MiniButtonRightStyle.hover.textColor   = TextSecondary;
+            MiniButtonRightStyle.active.textColor  = TextSecondary;
+            MiniButtonRightStyle.focused.textColor = TextTertiary;
+            MiniButtonRightStyle.onNormal.textColor  = TextPrimary;
+            MiniButtonRightStyle.onHover.textColor   = TextPrimary;
+            MiniButtonRightStyle.onActive.textColor  = TextPrimary;
+            MiniButtonRightStyle.onFocused.textColor = TextPrimary;
 
             // ── Status Bar ───────────────────────────────────────────────────
 
@@ -203,15 +227,15 @@ namespace YourNamespace   // ← 変更する
 
             StatusInfoStyle = new GUIStyle(statusBase);
             StatusInfoStyle.normal.background = _texSurface1;
-            StatusInfoStyle.normal.textColor  = TextSecondary;
+            FixAllTextColors(StatusInfoStyle, TextSecondary);
 
             StatusSuccessStyle = new GUIStyle(statusBase);
             StatusSuccessStyle.normal.background = MakeTex(Color.Lerp(Surface1, SemanticSuccess, 0.3f));
-            StatusSuccessStyle.normal.textColor  = SemanticSuccess;
+            FixAllTextColors(StatusSuccessStyle, SemanticSuccess);
 
             StatusErrorStyle = new GUIStyle(statusBase);
             StatusErrorStyle.normal.background = MakeTex(Color.Lerp(Surface1, SemanticError, 0.5f));
-            StatusErrorStyle.normal.textColor  = new Color(1f, 0.65f, 0.65f);
+            FixAllTextColors(StatusErrorStyle, new Color(1f, 0.65f, 0.65f));
         }
 
         // ─── Status Style Selector ───────────────────────────────────────────
@@ -226,6 +250,161 @@ namespace YourNamespace   // ← 変更する
                 2 => StatusErrorStyle,   // error
                 _ => StatusInfoStyle,    // info / default
             };
+        }
+
+        // ─── Editor Style Override (Light Mode Fix) ──────────────────────────
+
+        private static bool _overrideActive;
+        public static bool IsOverrideActive => _overrideActive;
+
+        private class GUIStyleBackup
+        {
+            private readonly GUIStyle _style;
+            private readonly Color _normalColor, _hoverColor, _activeColor, _focusedColor;
+            private readonly Color _onNormalColor, _onHoverColor, _onActiveColor, _onFocusedColor;
+            private readonly Texture2D _normalBg, _hoverBg, _activeBg, _focusedBg;
+            private readonly Texture2D _onNormalBg, _onHoverBg, _onActiveBg, _onFocusedBg;
+            private readonly RectOffset _border;
+            private readonly RectOffset _padding;
+
+            public GUIStyleBackup(GUIStyle style)
+            {
+                _style = style;
+                _normalColor = style.normal.textColor;
+                _hoverColor = style.hover.textColor;
+                _activeColor = style.active.textColor;
+                _focusedColor = style.focused.textColor;
+                _onNormalColor = style.onNormal.textColor;
+                _onHoverColor = style.onHover.textColor;
+                _onActiveColor = style.onActive.textColor;
+                _onFocusedColor = style.onFocused.textColor;
+
+                _normalBg = style.normal.background;
+                _hoverBg = style.hover.background;
+                _activeBg = style.active.background;
+                _focusedBg = style.focused.background;
+                _onNormalBg = style.onNormal.background;
+                _onHoverBg = style.onHover.background;
+                _onActiveBg = style.onActive.background;
+                _onFocusedBg = style.onFocused.background;
+
+                _border = style.border;
+                _padding = style.padding;
+            }
+
+            public void Restore()
+            {
+                _style.normal.textColor = _normalColor;
+                _style.hover.textColor = _hoverColor;
+                _style.active.textColor = _activeColor;
+                _style.focused.textColor = _focusedColor;
+                _style.onNormal.textColor = _onNormalColor;
+                _style.onHover.textColor = _onHoverColor;
+                _style.onActive.textColor = _onActiveColor;
+                _style.onFocused.textColor = _onFocusedColor;
+
+                _style.normal.background = _normalBg;
+                _style.hover.background = _hoverBg;
+                _style.active.background = _activeBg;
+                _style.focused.background = _focusedBg;
+                _style.onNormal.background = _onNormalBg;
+                _style.onHover.background = _onHoverBg;
+                _style.onActive.background = _onActiveBg;
+                _style.onFocused.background = _onFocusedBg;
+
+                _style.border = _border;
+                _style.padding = _padding;
+            }
+        }
+
+        private static GUIStyleBackup[] _backups;
+
+        /// <summary>
+        /// OnGUI 先頭で Initialize() の直後に呼ぶ。
+        /// ライトモード時のみ EditorStyles をダークテーマ色に一時上書きする。
+        /// PopEditorTheme を finally ブロックで必ず呼ぶこと。
+        /// </summary>
+        public static void PushEditorTheme()
+        {
+            if (EditorGUIUtility.isProSkin) { _overrideActive = false; return; }
+            _overrideActive = true;
+
+            if (_backups == null)
+            {
+                _backups = new[]
+                {
+                    new GUIStyleBackup(EditorStyles.label),
+                    new GUIStyleBackup(EditorStyles.objectField),
+                    new GUIStyleBackup(EditorStyles.numberField),
+                    new GUIStyleBackup(EditorStyles.textField),
+                    new GUIStyleBackup(EditorStyles.popup),
+                    new GUIStyleBackup(EditorStyles.toggle)
+                };
+            }
+
+            // ─ テキスト色を固定
+            FixAllTextColors(EditorStyles.label, TextSecondary);
+            FixAllTextColors(EditorStyles.objectField, TextSecondary);
+            FixAllTextColors(EditorStyles.numberField, TextSecondary);
+            FixAllTextColors(EditorStyles.textField,   TextSecondary);
+            FixAllTextColors(EditorStyles.popup,       TextSecondary);
+            FixAllTextColors(EditorStyles.toggle,      TextSecondary);
+
+            // ─ 背景テクスチャをすべての状態でダーク色に固定
+            FixAllStateBackgrounds(EditorStyles.objectField, _texSurface1);
+            FixAllStateBackgrounds(EditorStyles.numberField, _texSurface1);
+            FixAllStateBackgrounds(EditorStyles.textField,   _texSurface1);
+
+            // ポップアップは枠線付きカードテクスチャを使用し、9スライス境界を1pxに設定して引き伸ばし縞ノイズを解消
+            FixAllStateBackgrounds(EditorStyles.popup, _texCard);
+            EditorStyles.popup.border = new RectOffset(1, 1, 1, 1);
+            EditorStyles.popup.padding = new RectOffset(6, 18, 4, 4);
+        }
+
+        /// <summary>OnGUI 末尾の finally ブロックで必ず呼ぶ。EditorStyles を元に戻す。</summary>
+        public static void PopEditorTheme()
+        {
+            if (!_overrideActive) return;
+            _overrideActive = false;
+
+            if (_backups != null)
+            {
+                foreach (var backup in _backups)
+                {
+                    backup.Restore();
+                }
+            }
+        }
+
+        private static void FixAllStateBackgrounds(GUIStyle style, Texture2D tex)
+        {
+            style.normal.background    = tex;
+            style.hover.background     = tex;
+            style.active.background    = tex;
+            style.focused.background   = tex;
+            style.onNormal.background  = tex;
+            style.onHover.background   = tex;
+            style.onActive.background  = tex;
+            style.onFocused.background = tex;
+        }
+
+        // ─── Style Utilities ─────────────────────────────────────────────────
+
+        /// <summary>
+        /// GUIStyle の全 state の textColor を同一色に固定する。
+        /// EditorStyles.* を継承したスタイルはライトモードの色を引き継ぐため、
+        /// hover/active/focused/on* を含む全 state を明示設定して上書きする。
+        /// </summary>
+        private static void FixAllTextColors(GUIStyle style, Color color)
+        {
+            style.normal.textColor    = color;
+            style.hover.textColor     = color;
+            style.active.textColor    = color;
+            style.focused.textColor   = color;
+            style.onNormal.textColor  = color;
+            style.onHover.textColor   = color;
+            style.onActive.textColor  = color;
+            style.onFocused.textColor = color;
         }
 
         // ─── Texture Utilities ───────────────────────────────────────────────

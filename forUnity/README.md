@@ -41,7 +41,14 @@
 | `border: 1px solid` | 3×3 ボーダーテクスチャ + `GUIStyle.border = RectOffset(1,1,1,1)` |
 | `box-shadow` (Elevation) | surface-1 と surface-0 の明度差によって浮いて見える |
 | `hover` | `GUIStyle.hover.background` に明るめ色のテクスチャを設定 |
-| `color: typography.tertiary` | `GUIStyle.normal.textColor = TextTertiary` |
+| `color: typography.tertiary` | `FixAllTextColors(style, TextTertiary)` で全 state を固定 |
+
+> **重要: `EditorStyles.*` 継承スタイルのライトモード対策**
+> `new GUIStyle(EditorStyles.boldLabel)` などで継承したスタイルは、設定しなかった state
+> （`hover`・`active`・`onNormal` など）が Unity エディタのスキン色を引き継ぐ。
+> ライトモードでは黒に近い色が使われ、ダークカード上でテキストが見えなくなる。
+> テーマクラスの `FixAllTextColors(style, color)` ヘルパーで全 state を必ず固定すること。
+> 詳細は `techniques.md` の「4. タイポグラフィ階層の実装」を参照。
 
 ---
 
@@ -191,3 +198,11 @@ A: テーマのスタイルは `static` で共有されるため複数ウィン�
 **Q: `actionButtonStyle` が Addon の partial class から参照できない**
 
 A: partial class 内では `private` フィールドを共有できる。`OnGUI` で `actionButtonStyle = YourTheme.ActionButtonStyle;` とキャッシュすることで、同一クラスの他の partial ファイルから参照できる。
+
+**Q: ライトモードに切り替えると一部テキストが黒くなって見えない**
+
+A: 2種類の原因がある。
+
+1. **カスタム GUIStyle の未設定 state**: `normal.textColor` しか設定していないスタイルは、`onNormal` など未設定の state が Unity スキン色を引き継ぐ。`FixAllTextColors(style, color)` で全 state を固定する（詳細: `techniques.md` セクション 4）。
+
+2. **Unity 組み込みコントロールの EditorStyles**: `EditorGUILayout.Toggle`・`ObjectField`・`IntSlider` 等は `EditorStyles.label` などを内部で参照するため、カスタムスタイルの修正が届かない。`PushEditorTheme()` / `PopEditorTheme()` で OnGUI スコープ内だけ EditorStyles を一時上書きする（詳細: `techniques.md` セクション 9）。
