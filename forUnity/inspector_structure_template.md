@@ -25,17 +25,18 @@ EditorWindow では `position.width/height` を使って `EditorGUI.DrawRect` �
 インスペクターでは同等の手段がないため、**`overflow` プロパティを設定した GUIStyle** でラップする。
 （ネガティブマージンのみでは Unity バージョンによって隙間が生じたり、手動描画（DrawRect）を併用するとスクロール時にガタつきが発生したりするため、`overflow` が推奨される）
 
-### テーマクラスへの追加
+### テーマクラスへの組み込み（既定）
+
+`InspectorRootStyle` は `UniTexTheme_template.md` のテーマクラスに既に含まれている。
+追加実装は不要。参考として定義内容を示す。
 
 ```csharp
-// テーマクラス内 BuildStyles() に追加
-public static GUIStyle InspectorRootStyle { get; private set; }
-
+// UniTexTheme の BuildStyles() 内で定義済み
 InspectorRootStyle = new GUIStyle();
 InspectorRootStyle.normal.background = _texSurface0;   // Surface0 で全体を塗る
-InspectorRootStyle.margin   = new RectOffset(0, 0, 0, 0);   // マージンは標準に従う
-InspectorRootStyle.padding  = new RectOffset(10, 10, 8, 8); // 内側に適切な余白を確保
-InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0); // 重要: 背景描画領域だけを左右に広げる
+InspectorRootStyle.margin   = new RectOffset(0, 0, 0, 0);
+InspectorRootStyle.padding  = new RectOffset(10, 10, 8, 8);
+InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0); // 背景描画領域だけを左右に広げる
 ```
 
 ### OnInspectorGUI での使い方
@@ -44,14 +45,22 @@ InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0); // 重要: 背景描
 public override void OnInspectorGUI()
 {
     YourTheme.Initialize();
+    YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
     serializedObject.Update();
 
-    // ▼ ここでラップ開始 — Surface0 がインスペクター全面に塗られる
-    GUILayout.BeginVertical(YourTheme.InspectorRootStyle);
+    try
+    {
+        // ▼ ここでラップ開始 — Surface0 がインスペクター全面に塗られる
+        GUILayout.BeginVertical(YourTheme.InspectorRootStyle);
 
-    // ... セクション描画 ...
+        // ... セクション描画 ...
 
-    GUILayout.EndVertical(); // ▲ ラップ終了
+        GUILayout.EndVertical(); // ▲ ラップ終了
+    }
+    finally
+    {
+        YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
+    }
 }
 ```
 
@@ -147,41 +156,49 @@ namespace YourNamespace
         public override void OnInspectorGUI()
         {
             YourTheme.Initialize();
+            YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
             serializedObject.Update();
             var target = (YourComponent)this.target;
 
-            // Surface0 でインスペクター全体を塗り、カード (Surface1) が浮かぶ構造にする
-            GUILayout.BeginVertical(YourTheme.InspectorRootStyle);
-
-            // ---- SECTION A ----
-            DrawSection("SECTION A", () =>
+            try
             {
-                EditorGUI.BeginChangeCheck();
-                EditorGUILayout.PropertyField(myProp, new GUIContent("マイフィールド"));
-                if (EditorGUI.EndChangeCheck())
+                // Surface0 でインスペクター全体を塗り、カード (Surface1) が浮かぶ構造にする
+                GUILayout.BeginVertical(YourTheme.InspectorRootStyle);
+
+                // ---- SECTION A ----
+                DrawSection("SECTION A", () =>
                 {
-                    serializedObject.ApplyModifiedProperties();
-                    target.OnValidate(); // 必要に応じて
-                }
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUILayout.PropertyField(myProp, new GUIContent("マイフィールド"));
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        serializedObject.ApplyModifiedProperties();
+                        target.OnValidate(); // 必要に応じて
+                    }
 
-                GUILayout.Space(8);
+                    GUILayout.Space(8);
 
-                if (GUILayout.Button("メインアクション", YourTheme.ActionButtonStyle))
+                    if (GUILayout.Button("メインアクション", YourTheme.ActionButtonStyle))
+                    {
+                        Undo.RecordObject(target, "Do Action");
+                        target.DoSomething();
+                        EditorUtility.SetDirty(target);
+                    }
+                });
+
+                // ---- SECTION B ----
+                DrawSection("SECTION B", () =>
                 {
-                    Undo.RecordObject(target, "Do Action");
-                    target.DoSomething();
-                    EditorUtility.SetDirty(target);
-                }
-            });
+                    if (GUILayout.Button("サブアクション", YourTheme.SecondaryButtonStyle))
+                        target.DoSubAction();
+                });
 
-            // ---- SECTION B ----
-            DrawSection("SECTION B", () =>
+                GUILayout.EndVertical(); // InspectorRootStyle
+            }
+            finally
             {
-                if (GUILayout.Button("サブアクション", YourTheme.SecondaryButtonStyle))
-                    target.DoSubAction();
-            });
-
-            GUILayout.EndVertical(); // InspectorRootStyle
+                YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
+            }
         }
 
         // ─── ヘルパー ────────────────────────────────────────────────────────

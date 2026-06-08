@@ -80,6 +80,10 @@ namespace YourNamespace   // ← 変更する
         public static GUIStyle MiniButtonLeftStyle   { get; private set; }
         public static GUIStyle MiniButtonRightStyle  { get; private set; }
 
+        // Inspector / Toolbar
+        public static GUIStyle InspectorRootStyle    { get; private set; }
+        public static GUIStyle ToolbarButtonStyle    { get; private set; }
+
         // Status bar
         public static GUIStyle StatusInfoStyle    { get; private set; }
         public static GUIStyle StatusSuccessStyle { get; private set; }
@@ -127,34 +131,68 @@ namespace YourNamespace   // ← 変更する
             ToolbarStyle.margin  = new RectOffset(0, 0, 0, 0);
 
             // ── Typography ───────────────────────────────────────────────────
-            // EditorStyles.* を継承した場合、未設定の state はライトモードの色を引き継ぐ。
-            // FixAllTextColors で全 state を明示設定してテーマを固定する。
+            // new GUIStyle() から構築してテーマ非依存とする。
+            // EditorStyles.* を継承すると未設定の state にライトモード色が混入するため使用しない。
 
-            TitleStyle = new GUIStyle(EditorStyles.boldLabel);
-            TitleStyle.fontSize = 14;
+            TitleStyle = new GUIStyle();
+            TitleStyle.fontStyle = FontStyle.Bold;
+            TitleStyle.fontSize  = 14;
+            TitleStyle.alignment = TextAnchor.MiddleLeft;
             FixAllTextColors(TitleStyle, TextPrimary);
 
-            SectionHeaderStyle = new GUIStyle(EditorStyles.boldLabel);
-            SectionHeaderStyle.fontSize = 10;
+            SectionHeaderStyle = new GUIStyle();
+            SectionHeaderStyle.fontStyle = FontStyle.Bold;
+            SectionHeaderStyle.fontSize  = 10;
+            SectionHeaderStyle.margin    = new RectOffset(0, 0, 0, 2);
             FixAllTextColors(SectionHeaderStyle, TextTertiary);
-            SectionHeaderStyle.margin = new RectOffset(0, 0, 0, 2);
 
-            ToggleSectionOnStyle = new GUIStyle(EditorStyles.boldLabel);
-            ToggleSectionOnStyle.fontSize = 10;
+            ToggleSectionOnStyle = new GUIStyle();
+            ToggleSectionOnStyle.fontStyle = FontStyle.Bold;
+            ToggleSectionOnStyle.fontSize  = 10;
+            ToggleSectionOnStyle.margin    = new RectOffset(0, 0, 0, 2);
             FixAllTextColors(ToggleSectionOnStyle, TextPrimary);
-            ToggleSectionOnStyle.margin = new RectOffset(0, 0, 0, 2);
 
-            ToggleSectionOffStyle = new GUIStyle(EditorStyles.boldLabel);
-            ToggleSectionOffStyle.fontSize = 10;
+            ToggleSectionOffStyle = new GUIStyle();
+            ToggleSectionOffStyle.fontStyle = FontStyle.Bold;
+            ToggleSectionOffStyle.fontSize  = 10;
+            ToggleSectionOffStyle.margin    = new RectOffset(0, 0, 0, 2);
             FixAllTextColors(ToggleSectionOffStyle, TextTertiary);
-            ToggleSectionOffStyle.margin = new RectOffset(0, 0, 0, 2);
 
-            SecondaryTextStyle = new GUIStyle(EditorStyles.label);
-            FixAllTextColors(SecondaryTextStyle, TextSecondary);
+            SecondaryTextStyle = new GUIStyle();
             SecondaryTextStyle.wordWrap = true;
+            FixAllTextColors(SecondaryTextStyle, TextSecondary);
 
-            CaptionStyle = new GUIStyle(EditorStyles.miniLabel);
+            CaptionStyle = new GUIStyle();
+            CaptionStyle.fontSize = 9;
             FixAllTextColors(CaptionStyle, TextTertiary);
+
+            // ── Toolbar Button ────────────────────────────────────────────────
+
+            ToolbarButtonStyle = new GUIStyle();
+            ToolbarButtonStyle.normal.background   = null;
+            ToolbarButtonStyle.hover.background    = MakeTex(Color.Lerp(Surface2, Color.white, 0.10f));
+            ToolbarButtonStyle.active.background   = MakeTex(Color.Lerp(Surface2, Color.white, 0.18f));
+            ToolbarButtonStyle.border    = new RectOffset(0, 0, 0, 0);
+            ToolbarButtonStyle.margin    = new RectOffset(1, 1, 1, 1);
+            ToolbarButtonStyle.padding   = new RectOffset(6, 6, 2, 2);
+            ToolbarButtonStyle.fontSize  = 10;
+            ToolbarButtonStyle.alignment = TextAnchor.MiddleCenter;
+            ToolbarButtonStyle.normal.textColor    = TextTertiary;
+            ToolbarButtonStyle.hover.textColor     = TextSecondary;
+            ToolbarButtonStyle.active.textColor    = TextPrimary;
+            ToolbarButtonStyle.focused.textColor   = TextTertiary;
+            ToolbarButtonStyle.onNormal.textColor  = TextPrimary;
+            ToolbarButtonStyle.onHover.textColor   = TextPrimary;
+            ToolbarButtonStyle.onActive.textColor  = TextPrimary;
+            ToolbarButtonStyle.onFocused.textColor = TextPrimary;
+
+            // ── Inspector Root ────────────────────────────────────────────────
+
+            InspectorRootStyle = new GUIStyle();
+            InspectorRootStyle.normal.background = _texSurface0;
+            InspectorRootStyle.margin   = new RectOffset(0, 0, 0, 0);
+            InspectorRootStyle.padding  = new RectOffset(10, 10, 8, 8);
+            InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0);
 
             // ── Buttons ──────────────────────────────────────────────────────
 
@@ -255,11 +293,13 @@ namespace YourNamespace   // ← 変更する
 
             // ── Status Bar ───────────────────────────────────────────────────
 
-            var statusBase = new GUIStyle(EditorStyles.helpBox);
-            statusBase.border  = new RectOffset(1, 1, 1, 1);
-            statusBase.padding = new RectOffset(8, 8, 5, 5);
-            statusBase.margin  = new RectOffset(4, 4, 2, 2);
-            statusBase.fontSize = 11;
+            var statusBase = new GUIStyle();
+            statusBase.border    = new RectOffset(1, 1, 1, 1);
+            statusBase.padding   = new RectOffset(8, 8, 5, 5);
+            statusBase.margin    = new RectOffset(4, 4, 2, 2);
+            statusBase.fontSize  = 11;
+            statusBase.wordWrap  = true;
+            statusBase.alignment = TextAnchor.MiddleLeft;
 
             StatusInfoStyle = new GUIStyle(statusBase);
             StatusInfoStyle.normal.background = _texSurface1;
@@ -357,12 +397,11 @@ namespace YourNamespace   // ← 変更する
 
         /// <summary>
         /// OnGUI 先頭で Initialize() の直後に呼ぶ。
-        /// ライトモード時のみ EditorStyles をダークテーマ色に一時上書きする。
+        /// ライト/ダーク両モードで EditorStyles をテーマ定義色に一時上書きする。
         /// PopEditorTheme を finally ブロックで必ず呼ぶこと。
         /// </summary>
         public static void PushEditorTheme()
         {
-            if (EditorGUIUtility.isProSkin) { _overrideActive = false; return; }
             _overrideActive = true;
 
             if (_backups == null)

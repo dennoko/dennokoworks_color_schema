@@ -122,11 +122,11 @@ private static void EnsureTextures()
 
 ## 4. タイポグラフィ階層の実装
 
-### ライトモード対応: 全 state の文字色を明示設定する
+### テーマ非依存: EditorStyles を継承せず new GUIStyle() から構築する
 
-`EditorStyles.boldLabel` などを継承した `GUIStyle` は、設定しなかった state（`hover`、`active`、`onNormal` など）が Unity エディタのスキン色を引き継ぐ。ライトモードでは黒に近い色が使われるため、ダークテーマのカード上でテキストが見えなくなる。
+`new GUIStyle(EditorStyles.boldLabel)` のように継承すると、設定しなかった state（`hover`、`active`、`onNormal` など）に Unity エディタのスキン色が混入する。ライト/ダーク切り替えで見た目が変化する原因になる。
 
-**必ず全 state を明示設定すること。**
+**`new GUIStyle()` から構築し、必要なプロパティをすべて明示設定すること。**
 
 ```csharp
 // テーマクラスに追加するヘルパーメソッド
@@ -150,10 +150,11 @@ private static void FixAllTextColors(GUIStyle style, Color color)
 ### セクション見出し（SectionHeader）
 
 ```csharp
-var sectionHeaderStyle = new GUIStyle(EditorStyles.boldLabel);
-sectionHeaderStyle.fontSize = 10;
+var sectionHeaderStyle = new GUIStyle(); // EditorStyles を継承しない
+sectionHeaderStyle.fontStyle = FontStyle.Bold;
+sectionHeaderStyle.fontSize  = 10;
+sectionHeaderStyle.margin    = new RectOffset(0, 0, 0, 2);
 FixAllTextColors(sectionHeaderStyle, TextTertiary); // 全 state を #aaaaaa に固定
-sectionHeaderStyle.margin = new RectOffset(0, 0, 0, 2);
 ```
 
 ### トグルセクションの ON/OFF 文字色切り替え
@@ -162,12 +163,14 @@ sectionHeaderStyle.margin = new RectOffset(0, 0, 0, 2);
 ON/OFF で別スタイルを渡して状態を文字色で表現する。
 
 ```csharp
-var toggleOnStyle = new GUIStyle(EditorStyles.boldLabel);
-toggleOnStyle.fontSize = 10;
+var toggleOnStyle = new GUIStyle(); // EditorStyles を継承しない
+toggleOnStyle.fontStyle = FontStyle.Bold;
+toggleOnStyle.fontSize  = 10;
 FixAllTextColors(toggleOnStyle, TextPrimary);   // ON: 全 state を #ffffff に固定
 
-var toggleOffStyle = new GUIStyle(EditorStyles.boldLabel);
-toggleOffStyle.fontSize = 10;
+var toggleOffStyle = new GUIStyle(); // EditorStyles を継承しない
+toggleOffStyle.fontStyle = FontStyle.Bold;
+toggleOffStyle.fontSize  = 10;
 FixAllTextColors(toggleOffStyle, TextTertiary); // OFF: 全 state を #aaaaaa に固定
 
 // DrawToggleSection 内で使用
@@ -175,9 +178,11 @@ var headerStyle = toggle ? toggleOnStyle : toggleOffStyle;
 bool newToggle = EditorGUILayout.ToggleLeft(title, toggle, headerStyle);
 ```
 
-> **NG パターン（ライトモードで壊れる）:**
+> **NG パターン（テーマ切り替えで壊れる）:**
 > ```csharp
-> // normal しか設定していない → onNormal がライトモームの黒を継承
+> // EditorStyles を継承するとスキン色が混入する
+> var toggleOnStyle = new GUIStyle(EditorStyles.boldLabel); // NG
+> // normal しか設定していない → onNormal に未定義色が残る
 > toggleOnStyle.normal.textColor = TextPrimary; // NG
 > ```
 
@@ -266,10 +271,12 @@ HelpBox の代わりに `GUILayout.Box` を使い、ステータス種別ごと�
 `FixAllTextColors` で全 state を固定すること。
 
 ```csharp
-var statusBase = new GUIStyle(EditorStyles.helpBox);
-statusBase.border  = new RectOffset(1, 1, 1, 1);
-statusBase.padding = new RectOffset(8, 8, 5, 5);
-statusBase.fontSize = 11;
+var statusBase = new GUIStyle(); // EditorStyles.helpBox を継承しない
+statusBase.border    = new RectOffset(1, 1, 1, 1);
+statusBase.padding   = new RectOffset(8, 8, 5, 5);
+statusBase.fontSize  = 11;
+statusBase.wordWrap  = true;
+statusBase.alignment = TextAnchor.MiddleLeft;
 
 var statusInfoStyle = new GUIStyle(statusBase);
 statusInfoStyle.normal.background = MakeTex(Surface1);
@@ -327,7 +334,7 @@ public static readonly Color Outline  = Hex(0x3a3a3a);
 `EditorGUILayout.Toggle`・`ObjectField`・`IntSlider`・`Popup`・`TextField` などの
 Unity 組み込みコントロールは `EditorStyles` を直接参照する。
 カスタム `GUIStyle` を修正しても、これらのコントロールの外観は EditorStyles に依存したままで、
-ライトモードでは以下の問題が発生する。
+ライト/ダーク両モードで以下の問題が発生する可能性がある。
 
 | コントロール | ライトモードの問題 |
 |---|---|
@@ -340,13 +347,14 @@ Unity 組み込みコントロールは `EditorStyles` を直接参照する。
 ### 解決策: PushEditorTheme / PopEditorTheme
 
 OnGUI スコープ内でのみ EditorStyles を一時上書きする。
+ライト/ダーク両モードで常時適用し、テーマによらず一定の外観を保証する。
 `finally` ブロックで確実に元の値を復元することで、他の EditorWindow に影響しない。
 
 ```csharp
 private void OnGUI()
 {
     YourTheme.Initialize();
-    YourTheme.PushEditorTheme(); // ライトモード時のみ EditorStyles を上書き
+    YourTheme.PushEditorTheme(); // ライト/ダーク両モードで常時 EditorStyles を上書き
 
     try
     {
@@ -431,7 +439,6 @@ private static GUIStyleBackup[] _backups;
 public static void PushEditorTheme()
 {
     // ダークモード（ProSkin）では上書き不要
-    if (EditorGUIUtility.isProSkin) { _overrideActive = false; return; }
     _overrideActive = true;
 
     if (_backups == null)
@@ -515,7 +522,7 @@ private int DrawPopup(GUIContent label, int selectedIndex, string[] displayedOpt
 
 ### 注意事項
 
-- **`isProSkin` チェック**: ダークモードでは Unity 組み込みスタイルが既に暗色なので上書きしない。
+- **常時適用**: ライト/ダーク両モードで常に EditorStyles を上書きし、テーマ依存を完全に排除する。
 - **`finally` ブロック必須**: 復元を保証しないと他の EditorWindow（Inspector 等）の表示が壊れる。
 - **対象外要素**: Toggle のチェックボックス画像（Unity 内蔵テクスチャ）は置換不可。ライトモードでも機能的には使用可能。
 - **すべての状態（States）の保存・復元**: `normal` だけでなく `hover`・`active`・`focused`・`onNormal` などの背景・テキスト色も網羅的に上書き・復元しないと、操作時にライトモードの明るい色が漏れ出て「ちらつき」や「文字の消失」が発生する。

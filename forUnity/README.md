@@ -43,12 +43,13 @@
 | `hover` | `GUIStyle.hover.background` に明るめ色のテクスチャを設定 |
 | `color: typography.tertiary` | `FixAllTextColors(style, TextTertiary)` で全 state を固定 |
 
-> **重要: `EditorStyles.*` 継承スタイルのライトモード対策**
-> `new GUIStyle(EditorStyles.boldLabel)` などで継承したスタイルは、設定しなかった state
-> （`hover`・`active`・`onNormal` など）が Unity エディタのスキン色を引き継ぐ。
-> ライトモードでは黒に近い色が使われ、ダークカード上でテキストが見えなくなる。
-> テーマクラスの `FixAllTextColors(style, color)` ヘルパーで全 state を必ず固定すること。
-> 詳細は `techniques.md` の「4. タイポグラフィ階層の実装」を参照。
+> **重要: `EditorStyles.*` を継承しない**
+> `new GUIStyle(EditorStyles.boldLabel)` のように継承すると、設定しなかった state に
+> Unity エディタのスキン色が混入し、ライト/ダーク切り替えで見た目が変化する。
+> テーマクラスのスタイルはすべて `new GUIStyle()` から構築し、
+> `FixAllTextColors(style, color)` で全 state のテキスト色を明示設定している。
+> 組み込みコントロール（Toggle・ObjectField 等）は `PushEditorTheme()` / `PopEditorTheme()` で
+> ライト/ダーク両モードで常時上書きする。詳細は `techniques.md` セクション 4・9 を参照。
 
 ---
 
@@ -79,12 +80,20 @@
 private void OnGUI()
 {
     YourTheme.Initialize(); // 初回のみスタイルを構築（以降はキャッシュ）
+    YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
 
-    // ウィンドウ全面に surface.level0 (#121212) を塗る
-    EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), YourTheme.Surface0);
+    try
+    {
+        // ウィンドウ全面に surface.level0 (#121212) を塗る
+        EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), YourTheme.Surface0);
 
-    DrawHeader();
-    // ...
+        DrawHeader();
+        // ...
+    }
+    finally
+    {
+        YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
+    }
 }
 ```
 
@@ -226,8 +235,8 @@ A: partial class 内では `private` フィールドを共有できる。`OnGUI`
 
 **Q: ライトモードに切り替えると一部テキストが黒くなって見えない**
 
-A: 2種類の原因がある。
+A: テンプレートの手順通りに実装すれば発生しない。原因と対策は以下の2点。
 
-1. **カスタム GUIStyle の未設定 state**: `normal.textColor` しか設定していないスタイルは、`onNormal` など未設定の state が Unity スキン色を引き継ぐ。`FixAllTextColors(style, color)` で全 state を固定する（詳細: `techniques.md` セクション 4）。
+1. **カスタム GUIStyle の EditorStyles 継承**: `new GUIStyle(EditorStyles.boldLabel)` のように継承すると未設定 state にスキン色が混入する。テーマクラスはすべて `new GUIStyle()` から構築済み（詳細: `techniques.md` セクション 4）。
 
-2. **Unity 組み込みコントロールの EditorStyles**: `EditorGUILayout.Toggle`・`ObjectField`・`IntSlider` 等は `EditorStyles.label` などを内部で参照するため、カスタムスタイルの修正が届かない。`PushEditorTheme()` / `PopEditorTheme()` で OnGUI スコープ内だけ EditorStyles を一時上書きする（詳細: `techniques.md` セクション 9）。
+2. **Unity 組み込みコントロールの EditorStyles**: `EditorGUILayout.Toggle`・`ObjectField`・`IntSlider` 等は `EditorStyles` を直接参照する。OnGUI で `PushEditorTheme()` / `PopEditorTheme()` を呼び、ライト/ダーク両モードで常時上書きすること（詳細: `techniques.md` セクション 9）。

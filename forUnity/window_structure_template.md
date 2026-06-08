@@ -95,20 +95,28 @@ namespace YourNamespace
 
             // スタイル初期化（初回のみ構築される）
             YourTheme.Initialize();
+            YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
             actionButtonStyle = YourTheme.ActionButtonStyle;
 
-            // ── ウィンドウ背景 (surface.level0) ──────────────────────────────
-            EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), YourTheme.Surface0);
+            try
+            {
+                // ── ウィンドウ背景 (surface.level0) ──────────────────────────────
+                EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), YourTheme.Surface0);
 
-            // ── 各エリアの描画 ────────────────────────────────────────────────
-            DrawHeader();
+                // ── 各エリアの描画 ────────────────────────────────────────────────
+                DrawHeader();
 
-            _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-            DrawSettingsArea();
-            EditorGUILayout.EndScrollView();
+                _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
+                DrawSettingsArea();
+                EditorGUILayout.EndScrollView();
 
-            DrawFooter();
-            DrawStatusBar();
+                DrawFooter();
+                DrawStatusBar();
+            }
+            finally
+            {
+                YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
+            }
         }
 
         // ─── ヘッダー ──────────────────────────────────────────────────────
@@ -304,7 +312,7 @@ private void DrawPreviewArea()
     GUILayout.BeginHorizontal(YourTheme.ToolbarStyle);
     GUILayout.Label("PREVIEW", YourTheme.SectionHeaderStyle);
     GUILayout.FlexibleSpace();
-    if (GUILayout.Button("Update", EditorStyles.toolbarButton))
+    if (GUILayout.Button("Update", YourTheme.ToolbarButtonStyle))
         UpdatePreview();
     GUILayout.EndHorizontal();
 
