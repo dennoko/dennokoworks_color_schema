@@ -98,10 +98,18 @@ Unity がドメインリロード（スクリプト再コンパイル後）を�
 
 ```csharp
 private static bool _initialized;
+private static bool _lastIsProSkin;
 private static Texture2D _texSurface1;
 
 public static void Initialize()
 {
+    bool currentProSkin = EditorGUIUtility.isProSkin;
+    if (_initialized && _lastIsProSkin != currentProSkin)
+    {
+        DisposeTextures();
+    }
+    _lastIsProSkin = currentProSkin;
+
     if (_initialized) return;
     _initialized = true;
     EnsureTextures();
@@ -374,6 +382,10 @@ private void OnGUI()
 private static bool _overrideActive;
 public static bool IsOverrideActive => _overrideActive;
 
+private static Color _backupCursorColor;
+private static Color _backupSelectionColor;
+private static bool _settingsBackupActive;
+
 private class GUIStyleBackup
 {
     private readonly GUIStyle _style;
@@ -438,7 +450,6 @@ private static GUIStyleBackup[] _backups;
 
 public static void PushEditorTheme()
 {
-    // ダークモード（ProSkin）では上書き不要
     _overrideActive = true;
 
     if (_backups == null)
@@ -450,8 +461,17 @@ public static void PushEditorTheme()
             new GUIStyleBackup(EditorStyles.numberField),
             new GUIStyleBackup(EditorStyles.textField),
             new GUIStyleBackup(EditorStyles.popup),
-            new GUIStyleBackup(EditorStyles.toggle)
+            new GUIStyleBackup(EditorStyles.toggle),
+            new GUIStyleBackup(GUI.skin.textField),
+            new GUIStyleBackup(GUI.skin.label)
         };
+    }
+
+    if (!_settingsBackupActive)
+    {
+        _backupCursorColor = GUI.skin.settings.cursorColor;
+        _backupSelectionColor = GUI.skin.settings.selectionColor;
+        _settingsBackupActive = true;
     }
 
     // ── テキスト色を固定
@@ -461,11 +481,27 @@ public static void PushEditorTheme()
     FixAllTextColors(EditorStyles.textField,   TextSecondary);
     FixAllTextColors(EditorStyles.popup,       TextSecondary);
     FixAllTextColors(EditorStyles.toggle,      TextSecondary);
+    FixAllTextColors(GUI.skin.textField,       TextSecondary);
+    FixAllTextColors(GUI.skin.label,           TextSecondary);
 
-    // ── 背景テクスチャをすべての状態でダーク色に固定 (ホバー・フォーカス時の白背景リークを防ぐ)
-    FixAllStateBackgrounds(EditorStyles.objectField, _texSurface1);  // 1×1 dark texture
-    FixAllStateBackgrounds(EditorStyles.numberField, _texSurface1);
-    FixAllStateBackgrounds(EditorStyles.textField,   _texSurface1);
+    // ── 背景テクスチャをすべての状態でダーク色＋ボーダーに固定 (ホバー・フォーカス時の白背景リークを防ぐ)
+    FixAllStateBackgrounds(EditorStyles.objectField, _texSearchField);  // bordered dark texture
+    EditorStyles.objectField.border = new RectOffset(1, 1, 1, 1);
+
+    FixAllStateBackgrounds(EditorStyles.numberField, _texSearchField);
+    EditorStyles.numberField.border = new RectOffset(1, 1, 1, 1);
+
+    FixAllStateBackgrounds(EditorStyles.textField,   _texSearchField);
+    EditorStyles.textField.border = new RectOffset(1, 1, 1, 1);
+    EditorStyles.textField.padding = new RectOffset(6, 6, 3, 3);
+
+    FixAllStateBackgrounds(GUI.skin.textField,       _texSearchField);
+    GUI.skin.textField.border = new RectOffset(1, 1, 1, 1);
+    GUI.skin.textField.padding = new RectOffset(6, 6, 3, 3);
+
+    // ── カーソルと選択範囲の色を固定 (ライトモードの黒カーソル等を防止)
+    GUI.skin.settings.cursorColor = TextPrimary;
+    GUI.skin.settings.selectionColor = new Color(1f, 1f, 1f, 0.25f);
 
     // ── ポップアップ（Popup）は9スライス境界を補正して縞ノイズを解消
     FixAllStateBackgrounds(EditorStyles.popup, _texCard);            // bordered dark texture
@@ -484,6 +520,13 @@ public static void PopEditorTheme()
         {
             backup.Restore();
         }
+    }
+
+    if (_settingsBackupActive)
+    {
+        GUI.skin.settings.cursorColor = _backupCursorColor;
+        GUI.skin.settings.selectionColor = _backupSelectionColor;
+        _settingsBackupActive = false;
     }
 }
 
