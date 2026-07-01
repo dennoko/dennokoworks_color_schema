@@ -441,14 +441,17 @@ namespace YourNamespace   // ← 変更する
             }
 
             // ─ テキスト色を固定
-            FixAllTextColors(EditorStyles.label, TextSecondary);
-            FixAllTextColors(EditorStyles.objectField, TextSecondary);
-            FixAllTextColors(EditorStyles.numberField, TextSecondary);
-            FixAllTextColors(EditorStyles.textField,   TextSecondary);
-            FixAllTextColors(EditorStyles.popup,       TextSecondary);
-            FixAllTextColors(EditorStyles.toggle,      TextSecondary);
-            FixAllTextColors(GUI.skin.textField,       TextSecondary);
-            FixAllTextColors(GUI.skin.label,           TextSecondary);
+            //   無効化されていないパラメーター/表記 (入力欄・ラベル・ポップアップ・トグル) は
+            //   完全な白 (TextPrimary) にして視認性を最大化する。無効時は DisabledScope が
+            //   自動的に減光するため、ここでは常に TextPrimary を指定する。
+            FixAllTextColors(EditorStyles.label, TextPrimary);
+            FixAllTextColors(EditorStyles.objectField, TextPrimary);
+            FixAllTextColors(EditorStyles.numberField, TextPrimary);
+            FixAllTextColors(EditorStyles.textField,   TextPrimary);
+            FixAllTextColors(EditorStyles.popup,       TextPrimary);
+            FixAllTextColors(EditorStyles.toggle,      TextPrimary);
+            FixAllTextColors(GUI.skin.textField,       TextPrimary);
+            FixAllTextColors(GUI.skin.label,           TextPrimary);
 
             // ─ 背景テクスチャをすべての状態でダーク色＋ボーダーに固定
             FixAllStateBackgrounds(EditorStyles.objectField, _texSearchField);
