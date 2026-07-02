@@ -1,6 +1,6 @@
-# インスペクター (CustomEditor) 構造テンプレート
+# インスペクター (CustomEditor) 構造テンプレート (UI Toolkit)
 
-dennoko.dev カラースキーマを **CustomEditor (Inspector)** に適用するためのガイドとテンプレート。
+dennokoworks フローティングデザインを **CustomEditor (Inspector)** に適用するためのガイドとテンプレート。
 `window_structure_template.md`（EditorWindow 向け）と対になるドキュメント。
 
 ---
@@ -9,210 +9,116 @@ dennoko.dev カラースキーマを **CustomEditor (Inspector)** に適用す�
 
 | 項目 | EditorWindow | CustomEditor (Inspector) |
 |---|---|---|
-| エントリーポイント | `OnGUI()` | `OnInspectorGUI()` |
-| 背景の塗り方 | `EditorGUI.DrawRect(new Rect(0,0,position.width,position.height), ...)` | `GUILayout.BeginVertical(InspectorRootStyle)` + `overflow` 設定 |
-| `position` プロパティ | 使える | **使えない** |
-| ウィンドウ幅 | `position.width` | `EditorGUIUtility.currentViewWidth` |
-| ボタン推奨サイズ | `fixedHeight 34 / 26` | **`fixedHeight 30 / 24`**（インスペクターは幅が狭い） |
-| スクロールビュー | 手動で `BeginScrollView` | Unity が自動管理 |
-| `serializedObject` | なし | `serializedObject.Update()` / `ApplyModifiedProperties()` を使う |
+| エントリーポイント | `CreateGUI()` | `CreateInspectorGUI()` (override, 戻り値あり) |
+| ルート要素 | `rootVisualElement` に追加 | `new VisualElement()` を作って **return** する |
+| 背景の塗り方 | `.dennoko-root` の `background-color` で全面に塗れる | InspectorElement の余白が残るため `.dennoko-inspector-root` (ネガティブマージン) を併用する |
+| スクロール | UXML に `ScrollView` を置く | Unity が自動管理（`ScrollView` 不要） |
+| データ連携 | 手動で `Q<T>()` + コールバック | `PropertyField` + `container.Bind(serializedObject)` |
+| ボタン推奨サイズ | `height: 34px / 26px` | **`height: 30px / 24px`**（インスペクターは幅が狭い） |
 
 ---
 
-## 背景塗りのパターン — InspectorRootStyle
+## ファイル構成
 
-EditorWindow では `position.width/height` を使って `EditorGUI.DrawRect` でウィンドウ全面を塗れる。
-インスペクターでは同等の手段がないため、**`overflow` プロパティを設定した GUIStyle** でラップする。
-（ネガティブマージンのみでは Unity バージョンによって隙間が生じたり、手動描画（DrawRect）を併用するとスクロール時にガタつきが発生したりするため、`overflow` が推奨される）
-
-### テーマクラスへの組み込み（既定）
-
-`InspectorRootStyle` は `UniTexTheme_template.md` のテーマクラスに既に含まれている。
-追加実装は不要。参考として定義内容を示す。
-
-```csharp
-// UniTexTheme の BuildStyles() 内で定義済み
-InspectorRootStyle = new GUIStyle();
-InspectorRootStyle.normal.background = _texSurface0;   // Surface0 で全体を塗る
-InspectorRootStyle.margin   = new RectOffset(0, 0, 0, 0);
-InspectorRootStyle.padding  = new RectOffset(10, 10, 8, 8);
-InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0); // 背景描画領域だけを左右に広げる
 ```
-
-### OnInspectorGUI での使い方
-
-```csharp
-public override void OnInspectorGUI()
-{
-    YourTheme.Initialize();
-    YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
-    serializedObject.Update();
-
-    try
-    {
-        // ▼ ここでラップ開始 — Surface0 がインスペクター全面に塗られる
-        GUILayout.BeginVertical(YourTheme.InspectorRootStyle);
-
-        // ... セクション描画 ...
-
-        GUILayout.EndVertical(); // ▲ ラップ終了
-    }
-    finally
-    {
-        YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
-    }
-}
-```
-
-> **注意:** `BeginVertical` / `EndVertical` が必ず対になるようにする。
-> 例外が飛ぶ可能性があるコードは `try/finally` でガードするとより堅牢。
-
----
-
-## インスペクター向けボタンサイズの調整
-
-EditorWindow 用テーマクラスをそのまま流用すると、ボタンが大きすぎる場合がある。
-インスペクター専用テーマクラスを作るか、Inspector 用スタイルを別プロパティとして追加する。
-
-```csharp
-// Inspector 用に fixedHeight を小さくした派生スタイル
-// BuildStyles() 内、ActionButtonStyle / SecondaryButtonStyle の直後に追加する
-
-ActionButtonStyle.fixedHeight  = 30; // ウィンドウ用は 34
-SecondaryButtonStyle.fixedHeight = 24; // ウィンドウ用は 26
+Editor/
+├─ UI/
+│   ├─ DennokoTheme.uss         ← uss_theme_template.md からコピー（Window と共有可）
+│   └─ YourCustomEditor.uxml    ← 下記 UXML
+└─ YourCustomEditor.cs          ← 下記 C#
 ```
 
 ---
 
-## DrawSection ヘルパー
+## UXML テンプレート (`YourCustomEditor.uxml`)
 
-インスペクターのセクション構造（見出し + セパレーター + コンテンツ）を統一する共通ヘルパー。
+`PropertyField` の `binding-path` に対象コンポーネントのシリアライズフィールド名を書く。
+C# 側の `Bind(serializedObject)` により自動的に値が接続される。
 
-```csharp
-private void DrawSection(string title, System.Action content)
-{
-    GUILayout.BeginVertical(YourTheme.CardStyle);
-    GUILayout.Label(title, YourTheme.SectionHeaderStyle);
+```xml
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
 
-    // 1px セパレーター
-    var rect = GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true));
-    EditorGUI.DrawRect(rect, YourTheme.Outline);
-    EditorGUILayout.Space(4);
+    <ui:VisualElement class="dennoko-card">
+        <ui:Label text="GENERAL" class="dennoko-section-title dennoko-card-header" />
+        <uie:PropertyField binding-path="displayName" />
+        <uie:PropertyField binding-path="intensity" />
+    </ui:VisualElement>
 
-    content?.Invoke();
-    GUILayout.EndVertical();
-}
-```
+    <ui:VisualElement class="dennoko-card">
+        <ui:Label text="ADVANCED" class="dennoko-section-title dennoko-card-header" />
+        <uie:PropertyField binding-path="advancedSettings" />
+        <ui:Button name="recalculate-button" text="Recalculate" class="dennoko-button-secondary" />
+    </ui:VisualElement>
 
-### 使い方
-
-```csharp
-DrawSection("GENERATOR SETTINGS", () =>
-{
-    EditorGUILayout.PropertyField(myProp, new GUIContent("表示名"));
-
-    GUILayout.Space(8);
-
-    if (GUILayout.Button("実行", YourTheme.ActionButtonStyle))
-        DoSomething();
-});
+</ui:UXML>
 ```
 
 ---
 
-## インスペクター向けカードの margin 設定
-
-インスペクターでは左右に Unity デフォルトの余白があるため、
-`CardStyle.margin` の左右は `0` にしておくと幅が自然に揃う。
-
-```csharp
-CardStyle.margin = new RectOffset(0, 0, 0, 12); // 左右 0、下 12px でカード間を分離
-```
-
-> EditorWindow 用の `margin = new RectOffset(4, 4, 6, 6)` とは異なる点に注意。
-
----
-
-## インスペクター全体の骨格 スケルトン
+## C# テンプレート (`YourCustomEditor.cs`)
 
 ```csharp
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
+using UnityEditor.UIElements;
 
-namespace YourNamespace
+namespace YourNamespace   // ← 変更する
 {
-    [CustomEditor(typeof(YourComponent))]
-    public class YourComponentInspector : Editor
+    [CustomEditor(typeof(YourComponent))]   // ← 対象のコンポーネント型に変更する
+    [CanEditMultipleObjects]
+    public class YourCustomEditor : UnityEditor.Editor
     {
-        // ─── Serialized Properties ───────────────────────────────────────────
-        SerializedProperty myProp;
+        private const string UXML_GUID = "YOUR_UXML_GUID_HERE";
+        private const string USS_GUID  = "YOUR_USS_GUID_HERE";
 
-        void OnEnable()
+        public override VisualElement CreateInspectorGUI()
         {
-            myProp = serializedObject.FindProperty("myField");
+            var container = new VisualElement();
+
+            // テーマ非依存のためのルートクラス + Inspector 用余白調整クラス
+            container.AddToClassList("dennoko-root");
+            container.AddToClassList("dennoko-inspector-root");
+            // USS ロード失敗時も背景が明るくならないよう Surface0 を C# 側でも保証
+            container.style.backgroundColor = new Color32(0x12, 0x12, 0x12, 0xFF);
+
+            // USS のロードと適用
+            string ussPath = AssetDatabase.GUIDToAssetPath(USS_GUID);
+            var uss = string.IsNullOrEmpty(ussPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<StyleSheet>(ussPath);
+            if (uss != null)
+            {
+                container.styleSheets.Add(uss);
+            }
+
+            // UXML のロードとインスタンス化
+            string uxmlPath = AssetDatabase.GUIDToAssetPath(UXML_GUID);
+            var uxml = string.IsNullOrEmpty(uxmlPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(uxmlPath);
+            if (uxml == null)
+            {
+                container.Add(new Label("UXML Asset が見つかりません。GUID を確認してください。"));
+                return container;
+            }
+            uxml.CloneTree(container);
+
+            // SerializedObject と PropertyField 群を接続する
+            container.Bind(serializedObject);
+
+            // 手動のイベント接続が必要な要素
+            var recalcButton = container.Q<Button>("recalculate-button");
+            if (recalcButton != null)
+                recalcButton.clicked += OnRecalculate;
+
+            return container;
         }
 
-        // ─── Inspector GUI ───────────────────────────────────────────────────
-        public override void OnInspectorGUI()
+        private void OnRecalculate()
         {
-            YourTheme.Initialize();
-            YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
-            serializedObject.Update();
-            var target = (YourComponent)this.target;
-
-            try
-            {
-                // Surface0 でインスペクター全体を塗り、カード (Surface1) が浮かぶ構造にする
-                GUILayout.BeginVertical(YourTheme.InspectorRootStyle);
-
-                // ---- SECTION A ----
-                DrawSection("SECTION A", () =>
-                {
-                    EditorGUI.BeginChangeCheck();
-                    EditorGUILayout.PropertyField(myProp, new GUIContent("マイフィールド"));
-                    if (EditorGUI.EndChangeCheck())
-                    {
-                        serializedObject.ApplyModifiedProperties();
-                        target.OnValidate(); // 必要に応じて
-                    }
-
-                    GUILayout.Space(8);
-
-                    if (GUILayout.Button("メインアクション", YourTheme.ActionButtonStyle))
-                    {
-                        Undo.RecordObject(target, "Do Action");
-                        target.DoSomething();
-                        EditorUtility.SetDirty(target);
-                    }
-                });
-
-                // ---- SECTION B ----
-                DrawSection("SECTION B", () =>
-                {
-                    if (GUILayout.Button("サブアクション", YourTheme.SecondaryButtonStyle))
-                        target.DoSubAction();
-                });
-
-                GUILayout.EndVertical(); // InspectorRootStyle
-            }
-            finally
-            {
-                YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
-            }
-        }
-
-        // ─── ヘルパー ────────────────────────────────────────────────────────
-        private void DrawSection(string title, System.Action content)
-        {
-            GUILayout.BeginVertical(YourTheme.CardStyle);
-            GUILayout.Label(title, YourTheme.SectionHeaderStyle);
-
-            var rect = GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true));
-            EditorGUI.DrawRect(rect, YourTheme.Outline);
-            EditorGUILayout.Space(4);
-
-            content?.Invoke();
-            GUILayout.EndVertical();
+            // target / serializedObject を使った処理を実装する
+            // 例: var component = (YourComponent)target;
         }
     }
 }
@@ -220,84 +126,49 @@ namespace YourNamespace
 
 ---
 
-## 複数の CustomEditor が同一型に存在する場合の問題
+## Inspector 固有の注意点
 
-**`[CustomEditor(typeof(T))]` を持つクラスが複数あると Unity はどちらか一方しか使わない。**
-新旧ファイルを並存させると、意図しない方が使われ続ける原因になる。
+### 1. 背景の塗り — `.dennoko-inspector-root`
 
-対処方針:
-- 旧ファイルを **必ず削除**する（`.cs` と `.meta` の両方）
-- `.meta` を残すと Unity がゴーストとして認識し続けることがある
+インスペクターでは、Unity の `InspectorElement` が持つ左右余白のぶん、
+`.dennoko-root` の背景の外側にエディタテーマの背景色が見えてしまう。
+`DennokoTheme.uss` に定義済みの `.dennoko-inspector-root` がネガティブマージンで余白を打ち消す。
 
-```bash
-# 削除コマンド例（bash / Git Bash）
-rm Assets/path/to/OldEditor.cs
-rm Assets/path/to/OldEditor.cs.meta
+```css
+/* DennokoTheme.uss に定義済み */
+.dennoko-inspector-root {
+    margin-left: -15px;
+    margin-right: -6px;
+    padding: 8px 12px;
+}
 ```
 
----
+> **注意:** 余白量は Unity バージョンによって異なる。左右に隙間が残る・
+> はみ出す場合は margin の値を調整すること。数 px の隙間を許容できる場合は
+> このクラスを付けなくてもよい（カード自体は正しくダーク表示される）。
 
-## よくある問題
+### 2. `PropertyField` はオーバーライドが自動で効く
 
-### Q: カードの背景が暗すぎて、インスペクターのデフォルト背景に馴染まない
+`PropertyField` は内部で標準の `TextField` / `FloatField` / `Toggle` 等を生成するため、
+`DennokoTheme.uss` の `.unity-base-field__input` / `.unity-toggle__checkmark` などの
+オーバーライドがそのまま適用される。個別のスタイル指定は不要。
 
-`InspectorRootStyle` でインスペクター全体を `Surface0` で塗っていない場合に起きる。
-Unity のデフォルト背景（ライトテーマなら白、ダークテーマならグレー）の上に
-`Surface1`（#1e1e1e）のカードが乗ると、周囲との明度差が大きくなりすぎる。
+### 3. `Bind()` を忘れない
 
-→ `GUILayout.BeginVertical(YourTheme.InspectorRootStyle)` でラップする。
+`CloneTree` しただけでは `PropertyField` は空のまま表示される。
+`container.Bind(serializedObject)` を必ず呼ぶこと。
+値の変更・Undo・複数選択 (`CanEditMultipleObjects`) はバインディングが自動処理する。
 
-### Q: `InspectorRootStyle` のラップがインスペクター端まで届かず隙間が生じる
+### 4. ボタンサイズはインスペクター向けに小さく
 
-`margin = new RectOffset(-4, -4, -4, -4)` のような負のマージン調整だけでは、Unity の環境や DPI によって限界がある。
+インスペクターは幅が狭いため、`dennoko-button-primary` (34px) が大きすぎる場合は
+インライン style か専用クラスで高さを詰める。
 
-→ **`overflow` プロパティ** を使用する。
-`InspectorRootStyle.overflow = new RectOffset(20, 20, 0, 0)` のように設定することで、レイアウトを崩さずに背景の描画領域だけを外側へ広げ、確実に端まで塗りつぶすことができる。
-
-### Q: `serializedObject.ApplyModifiedProperties()` を呼ばずに `EndVertical` を先に呼んでしまった
-
-`BeginVertical` / `EndVertical` のペアが崩れていると IMGUI のレイアウトグループスタックが
-壊れ、以降のフレームで描画が乱れる。`DrawSection` ヘルパーの中に閉じ込めることで
-コンテンツ内の例外でも `EndVertical` が漏れにくくなる。
-
-### Q: ドメインリロード後にスタイルが壊れる
-
-→ `techniques.md` の「3. テクスチャのライフサイクル管理」を参照。
-`_initialized` static フラグはドメインリロードで `false` にリセットされるため、
-`Initialize()` を `OnInspectorGUI` の先頭で毎フレーム呼んでいれば自動的に再構築される。
-
-### Q: カスタムボタンスタイルが古めかしい角丸ボタンになったり、意図しないグラデーションやシャドウがかかる
-
-フラットでスクエアなデザイン（dennoko.dev スタイル）のボタンを作りたい場合、`new GUIStyle(GUI.skin.button)` のように **標準のボタンスタイルを継承してはいけません。**
-
-Unity の標準ボタンスタイルには、あらかじめ `scaledBackgrounds` やネイティブの角丸、ドロップシャドウの描画設定が組み込まれているため、単純に `normal.background` にフラットなテクスチャを上書きしただけでは元の装飾と混ざって意図しない見た目になります。
-
-→ **対処法:** `GUI.skin.button` を継承せず、まっさらな `new GUIStyle()` からスタイルを構築します。その際、継承をやめることで失われる余白（`margin` や `padding`）を再設定する必要があります。
-
-```csharp
-// ❌ 悪い例: Unity の標準装飾が混ざり、角丸やグラデーションが残ってしまう
-ActionButtonStyle = new GUIStyle(GUI.skin.button);
-ActionButtonStyle.normal.background = _texAccentCard;
-
-// 🟢 良い例: まっさらな状態からフラットなスタイルを構築する
-ActionButtonStyle = new GUIStyle();
-ActionButtonStyle.normal.background = _texAccentCard;
-ActionButtonStyle.border  = new RectOffset(1, 1, 1, 1);
-ActionButtonStyle.margin  = new RectOffset(4, 4, 2, 2);  // 継承をやめたので明示的に指定する
-ActionButtonStyle.padding = new RectOffset(2, 2, 2, 2);  // 継承をやめたので明示的に指定する
+```xml
+<ui:Button text="Apply" class="dennoko-button-primary" style="height: 30px;" />
 ```
 
----
+### 5. 複数の CustomEditor が衝突する場合
 
-## ファイル参照マップ
-
-```
-1. ../example/index.html                  ← ビジュアルターゲット（ブラウザで開く）
-2. ../Docs/design_reference.md            ← デザインコンセプト
-3. ../Docs/colors_spec.md                 ← カラー仕様
-4. ../colors.json                         ← カラー実値 (#RRGGBB)
-5. forUnity/UniTexTheme_template.md       ← テーマクラス C# テンプレート
-6. forUnity/techniques.md                 ← IMGUI 固有の実装テクニック
-7. forUnity/window_structure_template.md  ← EditorWindow 向け骨格
-8. forUnity/inspector_structure_template.md ← このファイル（Inspector 向け骨格）
-```
+同一型に複数の `[CustomEditor]` があると片方しか使われない。
+継承先も対象にする場合は `[CustomEditor(typeof(X), true)]` を確認する。

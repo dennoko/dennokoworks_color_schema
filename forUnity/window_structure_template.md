@@ -1,7 +1,10 @@
-# Window 構造テンプレート
+# Window 構造テンプレート (UI Toolkit)
 
-Unity Editor 拡張ウィンドウの全体骨格。
-**このファイルのコードをコピーして作業を開始する**。
+Unity Editor 拡張ウィンドウの全体骨格。**UXML + C# のコードをコピーして作業を開始する**。
+
+- UI 構造 → UXML (`YourEditorWindow.uxml`)
+- スタイル → USS (`uss_theme_template.md` の `DennokoTheme.uss`)
+- ロジック → C# (`YourEditorWindow.cs`)
 
 ## 完成イメージ
 
@@ -14,283 +17,238 @@ Unity Editor 拡張ウィンドウの全体骨格。
 
 ```
 ┌──────────────────────────────────────┐
-│ [ウィンドウタイトル]          [JA][EN] │  ← DrawHeader()
-│ ──────────────────────────────────── │  ← セパレーター
+│ [ウィンドウタイトル]          [JA][EN] │  ← .dennoko-header
+│ ──────────────────────────────────── │  ← .dennoko-separator
 │ ┌──────────────────────────────────┐ │
-│ │ [PREVIEW]  [☑ Auto Update][Update]│ │  ← DrawPreviewArea()
-│ │  チェッカーボード + プレビュー画像  │ │    (ツールバー付きカード)
-│ └──────────────────────────────────┘ │
-│ ┌──────────────────────────────────┐ │
-│ │ SECTION TITLE                    │ │  ← DrawSection()
-│ │ ────────────────────────────     │ │
+│ │ SECTION TITLE                    │ │  ← .dennoko-card
+│ │ ────────────────────────────     │ │     + .dennoko-card-header
 │ │  [コンテンツ]                    │ │
 │ └──────────────────────────────────┘ │  ← ↑ ScrollView の中
 │ ┌──────────────────────────────────┐ │
-│ │ [☑] TOGGLE SECTION     [Reset]   │ │  ← DrawToggleSection()
+│ │ [☑] TOGGLE SECTION     [Reset]   │ │  ← .dennoko-toggle-header
 │ │ ────────────────────────────     │ │
-│ │  [スライダーなど]                 │ │
+│ │  [スライダーなど]                 │ │  ← name="...-content"
 │ └──────────────────────────────────┘ │
 │ ┌──────────────────────────────────┐ │
-│ │ OUTPUT: (AUTO)       [☐ Overwrite]│ │  ← DrawFooter()
-│ │ ────────────────────────────     │ │
-│ │ [      Apply & Save (Primary)   ]│ │
-│ │ [         Reset All             ]│ │
+│ │ [      Apply & Save (Primary)   ]│ │  ← .dennoko-button-primary
+│ │ [         Reset All             ]│ │  ← .dennoko-button-secondary
 │ └──────────────────────────────────┘ │
-│ [ステータスメッセージ]                │  ← DrawStatusBar()
+│ [ステータスメッセージ]                │  ← .dennoko-status
 └──────────────────────────────────────┘
 ```
 
 ---
 
-## 最小動作ウィンドウ スケルトン
+## ファイル構成
+
+```
+Editor/
+├─ UI/
+│   ├─ DennokoTheme.uss        ← uss_theme_template.md からコピー
+│   └─ YourEditorWindow.uxml   ← 下記 UXML
+└─ YourEditorWindow.cs         ← 下記 C#
+```
+
+配置後、Unity が生成した `.meta` ファイルから UXML / USS それぞれの GUID を控え、
+C# の定数に設定する。
+
+---
+
+## UXML テンプレート (`YourEditorWindow.uxml`)
+
+```xml
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+
+    <!-- ヘッダー -->
+    <ui:VisualElement class="dennoko-header">
+        <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
+    </ui:VisualElement>
+    <ui:VisualElement class="dennoko-separator" />
+
+    <!-- 設定エリア (スクロール可能) -->
+    <ui:ScrollView style="flex-grow: 1;">
+
+        <!-- 常時表示セクション -->
+        <ui:VisualElement class="dennoko-card">
+            <ui:Label text="INPUT" class="dennoko-section-title dennoko-card-header" />
+            <uie:ObjectField label="Source" name="source-field"
+                type="UnityEngine.Texture2D, UnityEngine.CoreModule" />
+        </ui:VisualElement>
+
+        <!-- ON/OFF トグル付きセクション -->
+        <ui:VisualElement class="dennoko-card">
+            <ui:VisualElement class="dennoko-card-header dennoko-toggle-header">
+                <ui:Toggle name="color-correction-toggle" text="COLOR CORRECTION"
+                    value="true" class="dennoko-section-title" />
+                <ui:Button name="color-correction-reset" text="Reset" />
+            </ui:VisualElement>
+            <ui:VisualElement name="color-correction-content">
+                <ui:Slider label="Hue" name="hue-slider"
+                    low-value="-180" high-value="180" show-input-field="true" />
+                <ui:Slider label="Saturation" name="sat-slider"
+                    low-value="0" high-value="2" value="1" show-input-field="true" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:ScrollView>
+
+    <!-- フッター (アクションボタン) -->
+    <ui:VisualElement class="dennoko-card">
+        <ui:Button name="apply-button" text="Apply &amp; Save" class="dennoko-button-primary" />
+        <ui:Button name="reset-all-button" text="Reset All" class="dennoko-button-secondary" />
+    </ui:VisualElement>
+
+    <!-- ステータスバー -->
+    <ui:Label name="status-label" text="Ready" class="dennoko-status" />
+
+</ui:UXML>
+```
+
+ポイント:
+
+- レイアウト構造は原則すべて UXML に書く。C# で `new VisualElement()` を組み上げない
+  （リストアイテムの動的追加など、動的な要素生成は例外）。
+- ロジックから触る要素には `name` 属性を付け、C# 側で `root.Q<T>("name")` で取得する。
+- `dennoko-*` クラスの見た目の定義は `uss_theme_template.md` を参照。
+
+---
+
+## C# テンプレート (`YourEditorWindow.cs`)
+
+UXML / USS のパス変更に耐えるよう **GUID でロード**する。
 
 ```csharp
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
+using UnityEngine.UIElements;
 
-namespace YourNamespace
+namespace YourNamespace   // ← 変更する
 {
     public class YourEditorWindow : EditorWindow
     {
-        // ─── Status ──────────────────────────────────────────────────────────
+        // 配置した UXML / USS の .meta ファイルに記載されている GUID を設定する
+        private const string UXML_GUID = "YOUR_UXML_GUID_HERE";
+        private const string USS_GUID  = "YOUR_USS_GUID_HERE";
+
         public enum StatusType { Info, Success, Error }
-        private string     _statusMessage  = "Ready";
-        private StatusType _statusType     = StatusType.Info;
-        private double     _statusResetTime = -1.0;
 
-        // Addons や partial class から actionButtonStyle を参照する場合はフィールドとして保持する
-        private GUIStyle actionButtonStyle;
+        private Label _statusLabel;
+        private IVisualElementScheduledItem _statusResetSchedule;
 
-        private Vector2 _scrollPosition;
-
-        // ─── Window Registration ─────────────────────────────────────────────
-        [MenuItem("Tools/Your Tool Name")]
+        [MenuItem("Tools/Your Tool Name")]   // ← メニューパスを変更する
         public static void ShowWindow()
         {
-            var window = GetWindow<YourEditorWindow>("Your Tool Name");
+            var window = GetWindow<YourEditorWindow>();
+            window.titleContent = new GUIContent("Your Tool Name");
             window.minSize = new Vector2(400, 600);
         }
 
-        // ─── Lifecycle ───────────────────────────────────────────────────────
-        private void OnEnable()
+        public void CreateGUI()
         {
-            // 初期化処理（データ読み込みなど）
-        }
+            VisualElement root = rootVisualElement;
 
-        private void OnDisable()
-        {
-            // クリーンアップ処理
-        }
+            // テーマ非依存のためのルートクラスを適用
+            root.AddToClassList("dennoko-root");
+            // USS ロード失敗時も背景が明るくならないよう Surface0 を C# 側でも保証
+            root.style.backgroundColor = new Color32(0x12, 0x12, 0x12, 0xFF);
+            root.style.flexGrow = 1;
 
-        // ─── OnGUI Entry Point ───────────────────────────────────────────────
-        private void OnGUI()
-        {
-            // ステータスの自動リセット（Info 以外を一定時間後に戻す）
-            if (_statusResetTime > 0 && EditorApplication.timeSinceStartup > _statusResetTime)
+            // USS のロードと適用
+            string ussPath = AssetDatabase.GUIDToAssetPath(USS_GUID);
+            var uss = string.IsNullOrEmpty(ussPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<StyleSheet>(ussPath);
+            if (uss != null)
             {
-                _statusMessage   = "Ready";
-                _statusType      = StatusType.Info;
-                _statusResetTime = -1.0;
+                root.styleSheets.Add(uss);
+            }
+            else
+            {
+                Debug.LogWarning($"[{nameof(YourEditorWindow)}] USS が見つかりません。GUID を確認してください: {USS_GUID}");
             }
 
-            // スタイル初期化（初回のみ構築される）
-            YourTheme.Initialize();
-            YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
-            actionButtonStyle = YourTheme.ActionButtonStyle;
-
-            try
+            // UXML のロードとインスタンス化
+            string uxmlPath = AssetDatabase.GUIDToAssetPath(UXML_GUID);
+            var uxml = string.IsNullOrEmpty(uxmlPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(uxmlPath);
+            if (uxml == null)
             {
-                // ── ウィンドウ背景 (surface.level0) ──────────────────────────────
-                EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), YourTheme.Surface0);
-
-                // ── 各エリアの描画 ────────────────────────────────────────────────
-                DrawHeader();
-
-                _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
-                DrawSettingsArea();
-                EditorGUILayout.EndScrollView();
-
-                DrawFooter();
-                DrawStatusBar();
+                root.Add(new Label("UXML Asset が見つかりません。GUID を確認してください。"));
+                return;
             }
-            finally
-            {
-                YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
-            }
+            uxml.CloneTree(root);
+
+            InitializeUI(root);
         }
 
-        // ─── ヘッダー ──────────────────────────────────────────────────────
-        private void DrawHeader()
+        // ─── バインディング ─────────────────────────────────────────────
+
+        private void InitializeUI(VisualElement root)
         {
-            EditorGUILayout.Space(6);
+            _statusLabel = root.Q<Label>("status-label");
 
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(6);
-            GUILayout.Label("Your Tool Name", YourTheme.TitleStyle);
-            GUILayout.FlexibleSpace();
-            GUILayout.Space(6);
-            GUILayout.EndHorizontal();
-
-            EditorGUILayout.Space(6);
-
-            // 全幅セパレーター
-            DrawSeparator();
-        }
-
-        // ─── 設定エリア ────────────────────────────────────────────────────
-        private void DrawSettingsArea()
-        {
-            GUILayout.BeginVertical();
-
-            DrawSection("INPUT", () =>
-            {
-                // ObjectField, Slider などのコンテンツをここに書く
-                GUILayout.Label("Source texture field here", YourTheme.SecondaryTextStyle);
-            });
-
-            // toggleSection の初期値は bool フィールドとして定義する
-            // private bool _showMySection = true;
-            DrawToggleSection("MY SECTION", ref _showMySection, () =>
-            {
-                GUILayout.Label("Toggle section content", YourTheme.SecondaryTextStyle);
-            }, onReset: () =>
-            {
-                // パラメータをデフォルト値に戻す
-            });
-
-            GUILayout.EndVertical();
-        }
-        private bool _showMySection = true; // ← 実際には class フィールドとして上部に定義する
-
-        // ─── フッター ──────────────────────────────────────────────────────
-        private void DrawFooter()
-        {
-            GUILayout.BeginVertical(YourTheme.CardStyle);
-
-            // 出力設定行など
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("OUTPUT: (AUTO)", YourTheme.CaptionStyle);
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-
-            DrawSeparator();
-
-            // Primary action
-            if (GUILayout.Button("Apply & Save", YourTheme.ActionButtonStyle))
-            {
-                ApplyAndSave();
-            }
-
-            EditorGUILayout.Space(4);
-
-            // Secondary action
-            if (GUILayout.Button("Reset All", YourTheme.SecondaryButtonStyle))
-            {
-                if (EditorUtility.DisplayDialog("Reset", "Reset all parameters?", "Yes", "No"))
-                    ResetAll();
-            }
-
-            GUILayout.EndVertical();
-        }
-
-        // ─── ステータスバー ────────────────────────────────────────────────
-        private void DrawStatusBar()
-        {
-            GUILayout.Box(_statusMessage, GetStatusStyle(_statusType), GUILayout.ExpandWidth(true));
-        }
-
-        private GUIStyle GetStatusStyle(StatusType type)
-        {
-            return type switch
-            {
-                StatusType.Success => YourTheme.StatusSuccessStyle,
-                StatusType.Error   => YourTheme.StatusErrorStyle,
-                _                  => YourTheme.StatusInfoStyle,
-            };
-        }
-
-        // ─── セクション描画ヘルパー ────────────────────────────────────────
-
-        /// <summary>常時表示の設定セクション。</summary>
-        private void DrawSection(string title, System.Action content)
-        {
-            GUILayout.BeginVertical(YourTheme.CardStyle);
-            GUILayout.Label(title, YourTheme.SectionHeaderStyle);
-            DrawSeparator();
-            content?.Invoke();
-            GUILayout.EndVertical();
-        }
-
-        /// <summary>
-        /// ON/OFF トグル付きセクション。
-        /// OFF 時もコンテンツは表示されグレーアウトされる（設定値が保持されていることを示す）。
-        /// </summary>
-        private void DrawToggleSection(string title, ref bool toggle, System.Action content, System.Action onReset = null)
-        {
-            GUILayout.BeginVertical(YourTheme.CardStyle);
-
-            GUILayout.BeginHorizontal();
-
-            var headerStyle = toggle ? YourTheme.ToggleSectionOnStyle : YourTheme.ToggleSectionOffStyle;
-
-            EditorGUI.BeginChangeCheck();
-            bool newToggle = EditorGUILayout.ToggleLeft(title, toggle, headerStyle, GUILayout.ExpandWidth(true));
-            if (EditorGUI.EndChangeCheck())
-            {
-                toggle = newToggle;
-                Repaint(); // 必要に応じてプレビュー更新を呼ぶ
-            }
-
-            if (onReset != null)
-            {
-                if (GUILayout.Button("Reset", YourTheme.MiniButtonStyle, GUILayout.Width(50)))
+            // トグル付きセクション: トグル OFF でコンテンツをグレーアウト
+            BindToggleSection(root,
+                toggleName:  "color-correction-toggle",
+                contentName: "color-correction-content",
+                resetName:   "color-correction-reset",
+                onReset: () =>
                 {
-                    onReset.Invoke();
-                    GUI.FocusControl(null);
-                }
-            }
+                    root.Q<Slider>("hue-slider").value = 0f;
+                    root.Q<Slider>("sat-slider").value = 1f;
+                });
 
-            GUILayout.EndHorizontal();
-
-            DrawSeparator();
-
-            using (new EditorGUI.DisabledGroupScope(!toggle))
-            {
-                content?.Invoke();
-            }
-
-            GUILayout.EndVertical();
+            root.Q<Button>("apply-button").clicked += ApplyAndSave;
+            root.Q<Button>("reset-all-button").clicked += ResetAll;
         }
 
-        /// <summary>Outline 色の 1px 横区切り線。</summary>
-        private void DrawSeparator()
+        /// <summary>トグル・コンテンツ・Reset ボタンを接続する共通ヘルパー。</summary>
+        private static void BindToggleSection(
+            VisualElement root, string toggleName, string contentName,
+            string resetName, System.Action onReset)
         {
-            var rect = GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true));
-            EditorGUI.DrawRect(rect, YourTheme.Outline);
-            EditorGUILayout.Space(4);
+            var toggle  = root.Q<Toggle>(toggleName);
+            var content = root.Q<VisualElement>(contentName);
+
+            toggle.RegisterValueChangedCallback(evt => content.SetEnabled(evt.newValue));
+            content.SetEnabled(toggle.value);
+
+            var reset = root.Q<Button>(resetName);
+            if (reset != null && onReset != null)
+                reset.clicked += () => onReset();
         }
 
-        // ─── ビジネスロジック (スタブ) ─────────────────────────────────────
+        // ─── ステータスバー ─────────────────────────────────────────────
+
+        /// <summary>ステータスを表示する。Success / Error は 3 秒後に Ready へ自動復帰。</summary>
+        private void SetStatus(string message, StatusType type, long autoResetMs = 3000)
+        {
+            _statusLabel.text = message;
+            _statusLabel.EnableInClassList("dennoko-status--success", type == StatusType.Success);
+            _statusLabel.EnableInClassList("dennoko-status--error",   type == StatusType.Error);
+
+            _statusResetSchedule?.Pause();
+            if (type != StatusType.Info)
+            {
+                _statusResetSchedule = _statusLabel.schedule
+                    .Execute(() => SetStatus("Ready", StatusType.Info))
+                    .StartingIn(autoResetMs);
+            }
+        }
+
+        // ─── アクション ─────────────────────────────────────────────────
+
         private void ApplyAndSave()
         {
-            // 処理後にステータスを更新する例
-            SetStatus("Saved successfully.", StatusType.Success);
+            // TODO: 実装する
+            SetStatus("Saved.", StatusType.Success);
         }
 
         private void ResetAll()
         {
-            // パラメータをリセット
-        }
-
-        /// <summary>ステータスバーにメッセージを表示し、一定時間後に "Ready" へ戻す。</summary>
-        private void SetStatus(string message, StatusType type, double autoResetSeconds = 3.0)
-        {
-            _statusMessage   = message;
-            _statusType      = type;
-            _statusResetTime = type == StatusType.Info
-                ? -1.0
-                : EditorApplication.timeSinceStartup + autoResetSeconds;
-            Repaint();
+            // TODO: 実装する
+            SetStatus("Reset.", StatusType.Info);
         }
     }
 }
@@ -298,48 +256,42 @@ namespace YourNamespace
 
 ---
 
-## ツールバー付きカード（プレビューエリアパターン）
+## カスタマイズポイント
 
-プレビューエリアのようにツールバーをカード端まで伸ばしたい場合は `CardOuterStyle` を使う。
-
-```csharp
-private void DrawPreviewArea()
-{
-    // padding=0 の外枠でツールバーが端まで伸びる
-    GUILayout.BeginVertical(YourTheme.CardOuterStyle);
-
-    // ツールバー行 (Surface2 背景)
-    GUILayout.BeginHorizontal(YourTheme.ToolbarStyle);
-    GUILayout.Label("PREVIEW", YourTheme.SectionHeaderStyle);
-    GUILayout.FlexibleSpace();
-    if (GUILayout.Button("Update", YourTheme.ToolbarButtonStyle))
-        UpdatePreview();
-    GUILayout.EndHorizontal();
-
-    // コンテンツ（手動 4px パディング）
-    float contentHeight = 200f;
-    Rect container = GUILayoutUtility.GetRect(0, contentHeight + 8, GUILayout.ExpandWidth(true));
-    Rect inner = new Rect(container.x + 4, container.y + 4, container.width - 8, contentHeight);
-
-    // inner 矩形にプレビュー画像などを描画する
-    EditorGUI.DrawRect(inner, YourTheme.Surface0); // 仮の背景
-
-    GUILayout.EndVertical();
-}
-```
+| 箇所 | 変更内容 |
+|---|---|
+| `namespace YourNamespace` / クラス名 | プロジェクトに合わせる |
+| `UXML_GUID` / `USS_GUID` | 配置したアセットの `.meta` の GUID |
+| `[MenuItem("Tools/Your Tool Name")]` | メニューパス |
+| UXML のセクション | `.dennoko-card` ブロックを追加・削除 |
+| `InitializeUI` | 要素の取得とイベント接続を追加 |
 
 ---
 
-## ファイル参照マップ
+## セクションの追加パターン
 
-このリポジトリだけで実装するために必要なファイルの読み順：
+**常時表示セクション** — UXML に以下のブロックを追加するだけでよい。
 
+```xml
+<ui:VisualElement class="dennoko-card">
+    <ui:Label text="SECTION TITLE" class="dennoko-section-title dennoko-card-header" />
+    <!-- コンテンツ -->
+</ui:VisualElement>
 ```
-1. ../example/index.html          ← ビジュアルターゲット（ブラウザで開く）
-2. ../Docs/design_reference.md    ← デザインコンセプト
-3. ../Docs/colors_spec.md         ← カラー仕様（役割の定義）
-4. ../colors.json                 ← カラーの実値（#RRGGBB）
-5. forUnity/UniTexTheme_template.md ← C# テーマクラス（コピー元）
-6. forUnity/techniques.md         ← IMGUI 固有の実装テクニック
-7. forUnity/window_structure_template.md ← このファイル（ウィンドウ骨格）
-```
+
+**ON/OFF トグル付きセクション** — UXML にトグル付きカードを追加し、
+C# で `BindToggleSection(...)` を 1 行呼ぶ。
+
+- `toggle = true` → コンテンツが有効（通常表示）
+- `toggle = false` → `SetEnabled(false)` により Unity が自動でグレーアウトし操作不可になる
+
+---
+
+## よくある注意点
+
+- **`show-input-field="true"`**: Slider に数値入力欄を付ける。入力欄のスタイルは
+  `.unity-base-field__input` のオーバーライドが自動適用される。
+- **エディタ専用コントロール** (`ObjectField`, `PropertyField` 等) は
+  `xmlns:uie="UnityEditor.UIElements"` 名前空間で書く。
+- **テーマ確認**: Preferences でエディタテーマを Light / Dark 両方に切り替えて表示確認する。
+  詳細チェックリストは `techniques.md` を参照。

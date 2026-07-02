@@ -1,6 +1,9 @@
-# dennoko.dev Color Schema — Unity IMGUI 実装ガイド
+# dennoko.dev Color Schema — Unity UI Toolkit 実装ガイド
 
-`colors_spec.md` / `design_reference.md` で定義したカラースキーマを **Unity Editor 拡張 (IMGUI)** に適用するためのガイドです。
+`colors_spec.md` / `design_reference.md` で定義したカラースキーマを **Unity Editor 拡張 (UI Toolkit / UXML / USS)** に適用するためのガイドです。
+
+- **ターゲット環境**: Unity 2022.3 ～ Unity 6
+- **最優先要件**: Unity エディタのテーマ設定 (Personal Light / Dark 等) に左右されず、常に dennokoworks の「フローティングデザイン (ダークテーマ)」を維持すること
 
 ---
 
@@ -11,10 +14,10 @@
 2. ../Docs/design_reference.md       ← デザインコンセプト（フローティング・Elevation）
 3. ../Docs/colors_spec.md            ← カラー仕様（各色の役割）
 4. ../colors.json                    ← カラー実値（#RRGGBB）
-5. forUnity/UniTexTheme_template.md  ← テーマクラス C# コード（コピー元）
-6. forUnity/techniques.md            ← IMGUI 固有の実装テクニック詳説
-7. forUnity/window_structure_template.md     ← EditorWindow 全体の骨格（コピー元）
-8. forUnity/inspector_structure_template.md  ← CustomEditor (Inspector) の骨格（コピー元）
+5. forUnity/uss_theme_template.md    ← テーマ USS 全文（コピー元）
+6. forUnity/window_structure_template.md     ← EditorWindow の UXML + C# 骨格（コピー元）
+7. forUnity/inspector_structure_template.md  ← CustomEditor (Inspector) の骨格（コピー元）
+8. forUnity/techniques.md            ← UI Toolkit 固有の実装テクニック詳説
 ```
 
 ---
@@ -24,219 +27,175 @@
 | ファイル | 内容 |
 |---|---|
 | `README.md` | このファイル。概要と全体手順 |
-| `UniTexTheme_template.md` | コピーして使うテーマクラス全文 |
-| `window_structure_template.md` | EditorWindow の骨格・DrawSection などヘルパー全文 |
-| `inspector_structure_template.md` | CustomEditor (Inspector) の骨格・InspectorRootStyle パターン |
-| `techniques.md` | IMGUI 固有の実装テクニック詳説 |
+| `uss_theme_template.md` | コピーして使うテーマ USS (`DennokoTheme.uss`) 全文 |
+| `window_structure_template.md` | EditorWindow の UXML + C# 骨格 |
+| `inspector_structure_template.md` | CustomEditor (Inspector) の UXML + C# 骨格 |
+| `techniques.md` | UI Toolkit 固有の実装テクニック・罠・IMGUI からの移行マッピング |
 
 ---
 
-## デザインの基本方針
+## 実装の役割分担（基本方針）
 
-`design_reference.md` の「暗部のレイヤーとフローティング」コンセプトを IMGUI で再現する。
-
-| CSS の概念 | Unity IMGUI での実現方法 |
+| レイヤー | 担当 |
 |---|---|
-| `background-color` (surface-0) | `EditorGUI.DrawRect` でウィンドウ全面を塗る |
-| `border: 1px solid` | 3×3 ボーダーテクスチャ + `GUIStyle.border = RectOffset(1,1,1,1)` |
-| `box-shadow` (Elevation) | surface-1 と surface-0 の明度差によって浮いて見える |
-| `hover` | `GUIStyle.hover.background` に明るめ色のテクスチャを設定 |
-| `color: typography.tertiary` | `FixAllTextColors(style, TextTertiary)` で全 state を固定 |
+| UI 構造 | **UXML** に書く。C# で `new VisualElement()` を手組みしない（動的リストは例外） |
+| スタイル | **USS** (`DennokoTheme.uss`) に書く。カラーは USS 変数 `--dennoko-*` を経由し、ハードコード禁止 |
+| ロジック | **C#** は UI の生成 (`CreateGUI` / `CreateInspectorGUI`)・アセットロード・イベント接続に専念 |
 
-> **重要: `EditorStyles.*` を継承しない**
-> `new GUIStyle(EditorStyles.boldLabel)` のように継承すると、設定しなかった state に
-> Unity エディタのスキン色が混入し、ライト/ダーク切り替えで見た目が変化する。
-> テーマクラスのスタイルはすべて `new GUIStyle()` から構築し、
-> `FixAllTextColors(style, color)` で全 state のテキスト色を明示設定している。
-> 組み込みコントロール（Toggle・ObjectField 等）は `PushEditorTheme()` / `PopEditorTheme()` で
-> ライト/ダーク両モードで常時上書きする。詳細は `techniques.md` セクション 4・9 を参照。
+### テーマ非依存の仕組み
+
+`DennokoTheme.uss` は `.dennoko-root` を起点とする子孫セレクタで
+Unity ビルトインコントロール（`.unity-button`、`.unity-base-field__input` 等）を上書きする。
+詳細度がエディタテーマのデフォルト定義より高いため、Light / Dark どちらのテーマでも
+常に dennokoworks のダークデザインが勝つ。
+
+> **重要: ルート要素に必ず `dennoko-root` クラスを付与すること。**
+> USS 変数は `.dennoko-root` に定義されており子孫にのみ継承される。
+> 付け忘れるとスタイル全体が無効になる。仕組みの詳細は `techniques.md` セクション 1 を参照。
+
+| CSS の概念 | Unity UI Toolkit での実現方法 |
+|---|---|
+| `background-color` (surface-0) | `.dennoko-root { background-color: var(--dennoko-surface-0); }` |
+| `border: 1px solid` | `border-width: 1px; border-color: var(--dennoko-outline);`（ショートハンド不可） |
+| `box-shadow` (Elevation) | USS に box-shadow はない。surface-1 と surface-0 の明度差で浮いて見せる |
+| `hover` | `:hover` 疑似クラス |
+| `color: typography.tertiary` | `.dennoko-text-tertiary` クラス、または `color: var(--dennoko-text-tertiary)` |
 
 ---
 
 ## 実装手順
 
-### Step 1 — テーマクラスをコピーする
+### Step 1 — テーマ USS をコピーする
 
-`UniTexTheme_template.md` のコードブロックを `Scripts/Editor/YourTheme.cs` として配置する。
+`uss_theme_template.md` のコードブロックを `Editor/UI/DennokoTheme.uss` として配置する。
+このファイルは原則そのまま使う（プロジェクト固有クラスの追加は可）。
 
-変更箇所:
-- `namespace YourNamespace` → プロジェクトの namespace
-- クラス名 `YourTheme` → 任意（例: `MyToolTheme`）
-- `GetStatusStyle` の引数型を自ウィンドウの `StatusType` enum に合わせる
+### Step 2 — UXML と C# の骨格をコピーする
 
-### Step 2 — ウィンドウ骨格をコピーする
-
-`window_structure_template.md` のコードブロックを `Scripts/Editor/YourEditorWindow.cs` として配置する。
+- EditorWindow → `window_structure_template.md` の UXML / C# を配置
+- CustomEditor (Inspector) → `inspector_structure_template.md` の UXML / C# を配置
 
 変更箇所:
 - `namespace` / クラス名
-- `[MenuItem("Tools/Your Tool Name")]` のメニューパス
-- `DrawSettingsArea()` の中身（セクション定義）
-- `ApplyAndSave()` / `ResetAll()` の実装
+- `[MenuItem("Tools/Your Tool Name")]` のメニューパス（EditorWindow）
+- `[CustomEditor(typeof(YourComponent))]` の型（Inspector）
 
-### Step 3 — OnGUI の先頭で初期化する
+### Step 3 — GUID を設定する
 
-```csharp
-private void OnGUI()
-{
-    YourTheme.Initialize(); // 初回のみスタイルを構築（以降はキャッシュ）
-    YourTheme.PushEditorTheme(); // ライト/ダーク両モードで EditorStyles を上書き
-
-    try
-    {
-        // ウィンドウ全面に surface.level0 (#121212) を塗る
-        EditorGUI.DrawRect(new Rect(0, 0, position.width, position.height), YourTheme.Surface0);
-
-        DrawHeader();
-        // ...
-    }
-    finally
-    {
-        YourTheme.PopEditorTheme(); // 例外でも確実に EditorStyles を復元
-    }
-}
-```
+Unity にインポート後、UXML / USS の `.meta` ファイルから GUID を控え、
+C# の `UXML_GUID` / `USS_GUID` 定数に設定する。
+パス直書きではなく GUID ロードを使うことで、アセット移動に耐える。
 
 ### Step 4 — セクションを追加する
 
-**常時表示セクション** (`DrawSection`)
+UXML に `.dennoko-card` ブロックを追加していく。
 
-```csharp
-DrawSection("INPUT", () =>
-{
-    sourceTexture = (Texture2D)EditorGUILayout.ObjectField(
-        "Source", sourceTexture, typeof(Texture2D), false);
-});
+**常時表示セクション**
+
+```xml
+<ui:VisualElement class="dennoko-card">
+    <ui:Label text="INPUT" class="dennoko-section-title dennoko-card-header" />
+    <uie:ObjectField label="Source" name="source-field"
+        type="UnityEngine.Texture2D, UnityEngine.CoreModule" />
+</ui:VisualElement>
 ```
 
-**ON/OFF トグル付きセクション** (`DrawToggleSection`)
+**ON/OFF トグル付きセクション** — UXML にトグル付きヘッダーを置き、
+C# で `BindToggleSection()`（`window_structure_template.md` 参照）を呼ぶ。
 
-```csharp
-private bool _showColorCorrection = true;
-
-DrawToggleSection("COLOR CORRECTION", ref _showColorCorrection, () =>
-{
-    hue = EditorGUILayout.Slider("Hue", hue, -180f, 180f);
-    sat = EditorGUILayout.Slider("Saturation", sat, 0f, 2f);
-}, onReset: () =>
-{
-    hue = 0f; sat = 1f;
-});
+```xml
+<ui:VisualElement class="dennoko-card">
+    <ui:VisualElement class="dennoko-card-header dennoko-toggle-header">
+        <ui:Toggle name="cc-toggle" text="COLOR CORRECTION" value="true"
+            class="dennoko-section-title" />
+        <ui:Button name="cc-reset" text="Reset" />
+    </ui:VisualElement>
+    <ui:VisualElement name="cc-content">
+        <ui:Slider label="Hue" name="hue-slider" low-value="-180" high-value="180"
+            show-input-field="true" />
+    </ui:VisualElement>
+</ui:VisualElement>
 ```
 
-- `toggle = true` → セクションタイトルが `TextPrimary` (白) で表示される
-- `toggle = false` → `TextTertiary` (グレー) でグレーアウト表示、コンテンツは操作不可
+- `toggle = true` → コンテンツ有効（通常表示）
+- `toggle = false` → `SetEnabled(false)` で自動的にグレーアウト・操作不可
 
 ### Step 5 — ステータスバーを使う
 
+UXML 末尾に `<ui:Label name="status-label" text="Ready" class="dennoko-status" />` を置き、
+C# の `SetStatus()` ヘルパー（`window_structure_template.md` 参照）でクラスを切り替える。
+
 ```csharp
-public enum StatusType { Info, Success, Error }
-private string     _statusMessage  = "Ready";
-private StatusType _statusType     = StatusType.Info;
-private double     _statusResetTime = -1.0;
-
-// ステータスセット（3秒後に "Ready" へ自動リセット）
-private void SetStatus(string message, StatusType type, double seconds = 3.0)
-{
-    _statusMessage   = message;
-    _statusType      = type;
-    _statusResetTime = type == StatusType.Info
-        ? -1.0
-        : EditorApplication.timeSinceStartup + seconds;
-    Repaint();
-}
-
-// DrawStatusBar
-private void DrawStatusBar()
-{
-    GUILayout.Box(_statusMessage, GetStatusStyle(_statusType), GUILayout.ExpandWidth(true));
-}
-
-private GUIStyle GetStatusStyle(StatusType type) => type switch
-{
-    StatusType.Success => YourTheme.StatusSuccessStyle,
-    StatusType.Error   => YourTheme.StatusErrorStyle,
-    _                  => YourTheme.StatusInfoStyle,
-};
+SetStatus("Saved.", StatusType.Success);   // .dennoko-status--success が付与され 3 秒後に Ready へ戻る
+SetStatus("Failed.", StatusType.Error);    // .dennoko-status--error
 ```
 
 ### Step 6 — セパレーターを追加する
 
-```csharp
-private void DrawSeparator()
-{
-    var rect = GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true));
-    EditorGUI.DrawRect(rect, YourTheme.Outline);
-    EditorGUILayout.Space(4);
-}
+```xml
+<ui:VisualElement class="dennoko-separator" />
 ```
 
 ---
 
 ## カラーパレット早見表
 
-`colors.json` / `Docs/colors_spec.md` の内容を Unity の変数名で対応させたもの。
+`colors.json` / `Docs/colors_spec.md` の内容を USS 変数名で対応させたもの。
+すべて `.dennoko-root` に定義されている。
 
-| 役割 | HEX | `YourTheme` の変数名 |
+| 役割 | HEX | USS 変数 |
 |---|---|---|
-| アプリ背景 | `#121212` | `Surface0` |
-| カード・入力欄 | `#1e1e1e` | `Surface1` |
-| ツールバー・ホバー | `#2c2c2c` | `Surface2` |
-| 境界線・セパレーター | `#3a3a3a` | `Outline` |
-| タイトル文字 | `#ffffff` | `TextPrimary` |
-| 本文・ラベル | `#cccccc` | `TextSecondary` |
-| 補足・見出し | `#aaaaaa` | `TextTertiary` |
-| 無効状態文字 | `#555555` | `TextDisabled` |
-| エラー | `#9b1b30` | `SemanticError` |
-| 警告 | `#ffb74d` | `SemanticWarning` |
-| 成功 | `#4caf50` | `SemanticSuccess` |
-| 情報 | `#64b5f6` | `SemanticInfo` |
+| アプリ背景 | `#121212` | `--dennoko-surface-0` |
+| カード・入力欄 | `#1e1e1e` | `--dennoko-surface-1` |
+| ツールバー・ホバー | `#2c2c2c` | `--dennoko-surface-2` |
+| 境界線・セパレーター | `#3a3a3a` | `--dennoko-outline` |
+| タイトル文字 | `#ffffff` | `--dennoko-text-primary` |
+| 本文・ラベル | `#cccccc` | `--dennoko-text-secondary` |
+| 補足・見出し | `#aaaaaa` | `--dennoko-text-tertiary` |
+| 無効状態文字 | `#555555` | `--dennoko-text-disabled` |
+| エラー | `#9b1b30` | `--dennoko-semantic-error` |
+| 警告 | `#ffb74d` | `--dennoko-semantic-warning` |
+| 成功 | `#4caf50` | `--dennoko-semantic-success` |
+| 情報 | `#64b5f6` | `--dennoko-semantic-info` |
+| アクセント | `#ffffff` | `--dennoko-accent` |
+| ホバーオーバーレイ | `rgba(255,255,255,0.05)` | `--dennoko-hover-overlay` |
 
 ---
 
 ## よくある疑問
 
-**Q: ボタンが角丸やグラデーションになる・フラットにならない**
+**Q: スタイルがまったく適用されない・エディタテーマの見た目のままになる**
 
-A: `new GUIStyle(GUI.skin.button)` のように Unity の標準ボタンスタイルを継承すると、`scaledBackgrounds` や角丸・ドロップシャドウの描画設定が引き継がれ、フラットなテクスチャを上書きしても意図しない見た目になる。**この問題は EditorWindow でも CustomEditor (Inspector) でも同様に発生する。**
+A: 原因はほぼ次の 3 つ。
 
-→ **ボタンは `new GUIStyle()` から構築する。** 継承をやめる分、`margin`・`padding`・`stretchWidth` を明示的に設定すること。
+1. ルート要素に `dennoko-root` クラスを付け忘れている（USS 変数が継承されない）
+2. `USS_GUID` がプレースホルダーのまま、または間違っている
+3. `root.styleSheets.Add(uss)` を呼んでいない
 
-```csharp
-// ❌ 悪い例: Unity の標準装飾が混ざり、角丸やグラデーションが残ってしまう
-ActionButtonStyle = new GUIStyle(GUI.skin.button);
-ActionButtonStyle.normal.background = _texAccentCard;
+**Q: Light テーマに切り替えると一部の文字やアイコンが見えなくなる**
 
-// ✅ 良い例: まっさらな状態からフラットなスタイルを構築する
-ActionButtonStyle = new GUIStyle();
-ActionButtonStyle.normal.background = _texAccentCard;
-ActionButtonStyle.border       = new RectOffset(1, 1, 1, 1);
-ActionButtonStyle.margin       = new RectOffset(4, 4, 2, 2);
-ActionButtonStyle.padding      = new RectOffset(6, 6, 3, 3);
-ActionButtonStyle.stretchWidth = true;  // GUILayout で幅を自動拡張するために必要
-// ... 他プロパティ ...
-```
+A: `DennokoTheme.uss` のオーバーライドでカバーしていないビルトイン要素を使っている。
+ドロップダウン矢印やチェックマーク等の**画像**は `-unity-background-image-tint-color`
+で色を固定する必要がある。`techniques.md` セクション 4 を参照。
 
-詳細な解説は `inspector_structure_template.md` の「カスタムボタンスタイルが...」セクションを参照。
+**Q: Foldout の矢印が白い四角の箱になる**
 
----
+A: Toggle のチェックボックス装飾が Foldout の矢印要素に波及している。
+`DennokoTheme.uss` には打ち消しルールが定義済みなので、テーマを改変した場合は
+そのルールを消していないか確認する。`techniques.md` セクション 3 を参照。
 
-**Q: ドメインリロード後にテクスチャが壊れる**
+**Q: `border: 1px solid #3a3a3a` と書いたらエラーになる**
 
-A: `EnsureTextures()` で `if (!_texSurface1) _texSurface1 = ...` のように Unity の null 比較を使っていれば、ドメインリロード後に自動再生成される。`_initialized` static フラグもリロードで `false` に戻るため再構築が走る。`techniques.md` の「3. テクスチャのライフサイクル管理」を参照。
+A: USS は CSS のショートハンド `border` / `background` / `font-weight` を
+サポートしない。`border-width` + `border-color`、`background-color`、
+`-unity-font-style: bold` に分けて書く。`techniques.md` セクション 6 の対応表を参照。
 
-**Q: 複数の EditorWindow を同時に開くと壊れる**
+**Q: Inspector で PropertyField が空で表示される**
 
-A: テーマのスタイルは `static` で共有されるため複数ウィンドウでも問題ない。テクスチャも同様に共有される。
+A: `container.Bind(serializedObject)` の呼び忘れ。`inspector_structure_template.md` を参照。
 
-**Q: `actionButtonStyle` が Addon の partial class から参照できない**
+**Q: 旧 IMGUI 実装（UniTexTheme / DrawSection）からの移行方法は？**
 
-A: partial class 内では `private` フィールドを共有できる。`OnGUI` で `actionButtonStyle = YourTheme.ActionButtonStyle;` とキャッシュすることで、同一クラスの他の partial ファイルから参照できる。
-
-**Q: ライトモードに切り替えると一部テキストが黒くなって見えない**
-
-A: テンプレートの手順通りに実装すれば発生しない。原因と対策は以下の2点。
-
-1. **カスタム GUIStyle の EditorStyles 継承**: `new GUIStyle(EditorStyles.boldLabel)` のように継承すると未設定 state にスキン色が混入する。テーマクラスはすべて `new GUIStyle()` から構築済み（詳細: `techniques.md` セクション 4）。
-
-2. **Unity 組み込みコントロールの EditorStyles**: `EditorGUILayout.Toggle`・`ObjectField`・`IntSlider` 等は `EditorStyles` を直接参照する。OnGUI で `PushEditorTheme()` / `PopEditorTheme()` を呼び、ライト/ダーク両モードで常時上書きすること（詳細: `techniques.md` セクション 9）。
+A: `techniques.md` セクション 8 に IMGUI → UI Toolkit の対応表がある。
+`PushEditorTheme` / テクスチャキャッシュ / `FixAllTextColors` などの
+IMGUI 回避策は UI Toolkit ではすべて不要になる。
