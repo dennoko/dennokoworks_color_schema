@@ -128,6 +128,16 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     color: var(--dennoko-text-secondary);
 }
 
+/* Toggle ボタン型のアクティブ状態用 (ON/OFF 切り替えボタン等) */
+.dennoko-root .dennoko-button-active {
+    background-color: var(--dennoko-surface-2) !important;
+    color: var(--dennoko-text-primary) !important;
+    -unity-font-style: bold;
+}
+.dennoko-root .dennoko-button-active:hover {
+    background-color: var(--dennoko-outline) !important;
+}
+
 .dennoko-root .dennoko-button-secondary:hover {
     color: var(--dennoko-text-primary);
 }
@@ -136,12 +146,15 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
    TextField / IntegerField / FloatField / DropdownField / EnumField /
    ObjectField など、.unity-base-field__input を持つすべてに適用される。 */
 
-.dennoko-root .unity-base-field__input {
+.dennoko-root .unity-base-field__input,
+.dennoko-root .unity-base-field__input .unity-text-element,
+.dennoko-root .unity-base-field__input .unity-label,
+.dennoko-root .unity-object-field__input .unity-object-field-display__label {
     background-color: var(--dennoko-surface-1);
     border-color: var(--dennoko-outline);
     border-width: 1px;
     border-radius: 4px;
-    color: var(--dennoko-text-primary);
+    color: var(--dennoko-text-primary) !important;
     padding: 3px 6px;
 }
 
