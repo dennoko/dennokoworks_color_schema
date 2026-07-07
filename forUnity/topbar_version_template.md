@@ -12,6 +12,8 @@
 > **URL はプロジェクトごとに異なる。** チェック先の owner / repo / branch は
 > テンプレ側でハードコードせず、**各プロジェクトに設定されているリモートリポジトリ**
 > （`git remote get-url origin` で確認できる `owner/repo`）を C# の呼び出し引数に渡すこと。
+> branch は指定値で失敗すると `"main"` に自動フォールバックするため、`master` / `main`
+> のどちらがデフォルトブランチでも動く（ただし正しく指定すれば余計なリクエストを省ける）。
 
 ---
 
@@ -125,8 +127,13 @@ namespace YourTool
 `.completed` コールバック（Editor 上でも発火、手動ポーリング不要）。**例外は投げず、
 失敗はすべて `State.Error` に集約**する。
 
+**ブランチのフォールバック**: 指定した `branch` で取得に失敗した場合は `"main"` に
+フォールバックして再取得する。これにより、リポジトリのデフォルトブランチが `master` /
+`main` のどちらでも動く（`RepoBranch` の設定ミスやリポジトリ差異に耐える）。
+
 ```csharp
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -166,6 +173,9 @@ namespace Dennoko
         /// <summary>
         /// version.json を非同期取得して結果を onResult に渡す。例外は投げず、失敗時は
         /// State.Error を返す。onResult は Unity のメインスレッド上で呼ばれる。
+        ///
+        /// 指定 branch で取得できなかった場合は "main" にフォールバックして再取得する
+        /// (デフォルトブランチが master / main のどちらでも動くように)。
         /// </summary>
         public static void CheckAsync(
             string owner, string repo, string branch, string filePath,
@@ -173,14 +183,34 @@ namespace Dennoko
         {
             if (onResult == null) return;
 
+            // 候補ブランチ: 指定ブランチ → "main" (重複は除外)
+            var branches = new List<string>();
+            if (!string.IsNullOrEmpty(branch)) branches.Add(branch);
+            if (!branches.Contains("main", StringComparer.OrdinalIgnoreCase)) branches.Add("main");
+
+            TryBranch(owner, repo, branches, 0, filePath, localVersion, onResult);
+        }
+
+        /// <summary>候補ブランチを index から順に試す。エラーなら次の候補へフォールバックする。</summary>
+        private static void TryBranch(
+            string owner, string repo, List<string> branches, int index,
+            string filePath, string localVersion, Action<Result> onResult)
+        {
+            if (index >= branches.Count)
+            {
+                onResult(Error(localVersion));
+                return;
+            }
+
             UnityWebRequest req;
             try
             {
-                var url = $"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{filePath}";
+                var url = $"https://raw.githubusercontent.com/{owner}/{repo}/{branches[index]}/{filePath}";
                 req = UnityWebRequest.Get(url);
             }
             catch (Exception e)
             {
+                // URL 組み立て自体の失敗はブランチを変えても直らないため即エラー
                 Debug.LogWarning($"[DennokoVersionChecker] request build failed: {e.Message}");
                 onResult(Error(localVersion));
                 return;
@@ -189,18 +219,29 @@ namespace Dennoko
             var op = req.SendWebRequest();
             op.completed += _ =>
             {
+                Result result;
                 try
                 {
-                    onResult(BuildResult(req, localVersion));
+                    result = BuildResult(req, localVersion);
                 }
                 catch (Exception e)
                 {
                     Debug.LogWarning($"[DennokoVersionChecker] callback failed: {e.Message}");
-                    onResult(Error(localVersion));
+                    result = Error(localVersion);
                 }
                 finally
                 {
                     req.Dispose();
+                }
+
+                if (result.State == State.Error && index + 1 < branches.Count)
+                {
+                    // 次の候補ブランチへフォールバック
+                    TryBranch(owner, repo, branches, index + 1, filePath, localVersion, onResult);
+                }
+                else
+                {
+                    onResult(result);
                 }
             };
         }
@@ -355,6 +396,9 @@ private void ApplyVersionLabel()
 ## エラーハンドリング方針
 
 - 通信失敗・HTTP エラー・JSON パース失敗・`version` 欠落 → すべて `State.Error`。
+- 指定ブランチで `State.Error` になった場合は **`"main"` にフォールバック**して再取得し、
+  そこでも失敗して初めて `State.Error` を確定する（デフォルトブランチが master / main
+  どちらでも動く）。`RepoBranch` を正しく設定すればフォールバックは発生せず 1 回で済む。
 - `DennokoVersionChecker` は**例外を投げない**（内部で握り潰し `Debug.LogWarning` のみ）。
 - 表示は `.dennoko-version-label--error`（`--dennoko-semantic-warning`）で警告色テキスト。
 
@@ -363,5 +407,6 @@ private void ApplyVersionLabel()
 1. ウィンドウを開き、タイトル横に `v1.0.0` が出る。
 2. ローカル定数を下げる（例 `0.9.0`）と `--update` 色で「更新あり <最新版>」。
 3. ローカル定数とリモートが一致で、バージョンのみ表示。
-4. repo/branch を不正値にする or オフラインで `--error` 色の取得失敗テキスト、例外なし。
+4. `RepoBranch` を実在しない値にしても、`main` に version.json があればフォールバックで
+   バージョンが出る。owner/repo を不正値にする or オフラインなら `--error` 色の取得失敗テキスト、例外なし。
 5. 言語切替で接尾辞テキストが切り替わる。

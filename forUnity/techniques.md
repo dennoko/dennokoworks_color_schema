@@ -250,15 +250,16 @@ FixAllStateBackgrounds(GUI.skin.textField, _texSearchField);
 ```
 
 ### 10.4. IMGUI `ObjectField` の Select ボタン重なりバグの回避
-`typeof(Texture2D)` などの画像アセット型を対象とする `ObjectField` を描画する際、ラベルを空（`""`）にして `labelWidth = 1f` にした状態で 1行の高さ（20px程度）に押し込んで描画すると、Unity がサムネイルプレビュー表示モード（正方形）になろうとして描画領域が縦に潰れ、アセット選択ボタンである「Select」がテキスト表示領域と重なって崩れてしまうバグが発生する。
-これを回避するため、画像選択の `ObjectField` にはラベル（例: `"画像"`) を直接指定し、代わりに `EditorGUIUtility.labelWidth` を設定して描画することで、通常の「1行テキスト＋丸ポチボタン」モードで安全に描画させる。
+`typeof(Texture2D)` などの画像アセット型を対象とする `ObjectField` を描画する際、高さが 20px などの狭い領域であると、Unity が強制的に正方形のサムネイルプレビュー表示モード（`ObjectFieldThumb`）で描画しようとし、結果としてアセット選択ボタンである「Select」が潰れてテキスト表示領域と重なって崩れてしまうバグが発生する。
+これを回避するため、`EditorGUILayout.ObjectField` のスタイル引数に明示的に `EditorStyles.objectField` を指定することで、サムネイルモードを無効化し、通常の「1行テキスト＋丸ポチボタン」のレイアウトで安全に描画させる。
 
 ```csharp
 // バグを回避する安全な 1 行描画の例
 float originalLabelWidth = EditorGUIUtility.labelWidth;
 EditorGUIUtility.labelWidth = 48f; // 他のコントロールのラベル幅と揃える
 var tex = (Texture2D)EditorGUILayout.ObjectField(new GUIContent("画像", "説明ツールチップ"),
-                                                 currentTex, typeof(Texture2D), false, GUILayout.Height(RowH));
+                                                 currentTex, typeof(Texture2D), false,
+                                                 EditorStyles.objectField, GUILayout.Height(RowH));
 EditorGUIUtility.labelWidth = originalLabelWidth;
 ```
 
@@ -272,7 +273,7 @@ EditorGUIUtility.labelWidth = originalLabelWidth;
    - 特に `TextField`、`ObjectField`、`DropdownField` の入力文字列やプレビュー選択テキストが、ライトテーマ下でも白文字（または暗い背景にしっかりとコントラストのある色）に維持されているか確認する。
    - IMGUI の数値入力欄やスライダーが「明るい背景に白文字」になって読めなくなっていないか確認する。
 2. **画像・テクスチャ用の `ObjectField` で「Select」ボタンが崩れて被っていないか？**
-   - ラベル無しで極端に狭い高さの `ObjectField` を作るとサムネイルモードの潰れバグが発生するため、ラベル付きで `labelWidth` を設定する手法に倣っているか確認する。
+   - テクスチャ型を指定する `ObjectField` は Unity の仕様でサムネイル表示になり潰れてしまうため、`EditorGUILayout.ObjectField` の引数に `EditorStyles.objectField` スタイルを明示的に指定し、1行テキスト＋丸ポチモードで正しく描画されているか確認する。
 3. **UXML / USS の GUID プレースホルダーを実際の GUID に置き換えたか？**
 4. **ルート要素に `dennoko-root` クラスを付けたか？**
    - 付け忘れると変数が解決されず、全要素がエディタテーマの見た目に戻る。
