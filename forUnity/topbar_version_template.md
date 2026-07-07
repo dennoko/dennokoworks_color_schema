@@ -164,9 +164,19 @@ namespace YourTool
             EditorApplication.delayCall += StartCheckBackgroundTask;
         }
 
+        // 同一ドメイン内での二重リクエスト防止（ドメインリロードで false に戻る）
+        private static bool _checking;
+
         internal static void StartCheckBackgroundTask()
         {
-            if (SessionState.GetBool(VerCheckDoneKey, false)) return;
+            // 成功済みなら再取得しない。だがエラー時は「インポート直後の一時的な失敗
+            // （パッケージ取り込み時のドメインリロードでリクエストが中断される等）」を想定し、
+            // 次のトリガー（ウィンドウを開く / ドメインリロード）で再試行する。
+            bool done  = SessionState.GetBool(VerCheckDoneKey, false);
+            bool error = SessionState.GetBool(VerCheckErrorKey, false);
+            if (done && !error) return;
+            if (_checking) return;
+            _checking = true;
 
             Dennoko.DennokoVersionChecker.CheckAsync(
                 RepoOwner, RepoName, RepoBranch, VersionFilePath, Current, OnVersionChecked);
@@ -174,6 +184,7 @@ namespace YourTool
 
         private static void OnVersionChecked(Dennoko.DennokoVersionChecker.Result result)
         {
+            _checking = false;
             SessionState.SetBool(VerCheckDoneKey, true);
             SessionState.SetBool(VerCheckErrorKey, result.State == Dennoko.DennokoVersionChecker.State.Error);
             SessionState.SetString(VerCheckLatestKey, result.LatestVersion ?? string.Empty);
@@ -339,21 +350,36 @@ namespace Dennoko
 
         private static Result BuildResult(UnityWebRequest req, string localVersion)
         {
+            string url = req != null ? req.url : "(null)";
 #if UNITY_2020_2_OR_NEWER
             bool hasError = req.result != UnityWebRequest.Result.Success;
 #else
             bool hasError = req.isNetworkError || req.isHttpError;
 #endif
-            if (hasError) return Error(localVersion);
+            // 失敗は必ず一度警告する（チェックはセッション1回のみ）。URL・httpCode・error が
+            // 「最新情報を取得できません」の切り分け材料になる（owner/repo/branch・push 有無・回線）。
+            if (hasError)
+            {
+                Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: url={url} httpCode={req.responseCode} error={req.error}");
+                return Error(localVersion);
+            }
 
             var json = req.downloadHandler != null ? req.downloadHandler.text : null;
-            if (string.IsNullOrEmpty(json)) return Error(localVersion);
+            if (string.IsNullOrEmpty(json))
+            {
+                Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: レスポンスが空。url={url} httpCode={req.responseCode}");
+                return Error(localVersion);
+            }
 
             VersionInfo info;
             try { info = JsonUtility.FromJson<VersionInfo>(json); }
-            catch { return Error(localVersion); }
+            catch (Exception e) { Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: JSON パース失敗: {e.Message} url={url}"); return Error(localVersion); }
 
-            if (info == null || string.IsNullOrEmpty(info.version)) return Error(localVersion);
+            if (info == null || string.IsNullOrEmpty(info.version))
+            {
+                Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: version フィールドが空。url={url}");
+                return Error(localVersion);
+            }
 
             var state = IsNewer(info.version, localVersion) ? State.UpdateAvailable : State.UpToDate;
             return new Result
@@ -436,10 +462,9 @@ private DennokoVersionChecker.Result _versionResult =
 private void StartVersionCheck()
 {
     LoadVersionResultFromSessionState();
-    if (!SessionState.GetBool(YourToolVersion.VerCheckDoneKey, false))
-    {
-        YourToolVersion.StartCheckBackgroundTask();
-    }
+    // 取得の要否は StartCheckBackgroundTask 内で判定する（成功済みなら何もしない／
+    // 前回エラーなら再試行）。ウィンドウを開き直すたびに一時的な失敗から自己回復できる。
+    YourToolVersion.StartCheckBackgroundTask();
 }
 
 internal void LoadVersionResultFromSessionState()
@@ -510,10 +535,76 @@ private void ApplyVersionLabel()
 
 ---
 
+## Step 7 — 手動リロードボタン（任意・推奨）
+
+「最新情報を取得できません」が出たときに、ユーザーが**その場で再取得を試せる** ↻ ボタンを
+バージョン表記の右に置く。取得失敗（オフライン／取り込み直後の中断）の切り分けに有効。
+
+**UXML**（`version-label` の直後、titlegroup 内）:
+```xml
+<ui:Label name="version-label" text="" class="dennoko-version-label" />
+<ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
+```
+
+**USS**（`.dennoko-version-label` の近く。色は `var(--dennoko-*)` 経由）:
+```css
+.dennoko-root .dennoko-version-reload-button {
+    width: 18px;
+    height: 18px;
+    margin-left: 4px;
+    padding: 0;
+    font-size: 12px;
+    color: var(--dennoko-text-tertiary);
+}
+.dennoko-root .dennoko-version-reload-button:hover {
+    color: var(--dennoko-text-primary);
+}
+```
+
+**版数クラス側に再取得 API を追加**（Step 4 の `YourToolVersion` に）:
+```csharp
+/// <summary>手動での再取得。前回結果（成功/失敗・ローカル版キャッシュ）を破棄して再チェックする。</summary>
+internal static void ForceRecheck()
+{
+    if (_checking) return; // 進行中なら何もしない
+    _currentCache = null;  // ローカル版も読み直す（version.json を直したケースに対応）
+    SessionState.SetBool(VerCheckDoneKey, false);
+    SessionState.SetBool(VerCheckErrorKey, false);
+    StartCheckBackgroundTask();
+}
+```
+
+**EditorWindow 側の配線**（`version-reload-button` を取得して click を接続）:
+```csharp
+var reloadButton = root.Q<Button>("version-reload-button");
+if (reloadButton != null)
+{
+    reloadButton.tooltip = Loc("アップデートを再確認"); // ← 各ツールの i18n に置換
+    reloadButton.clicked += () =>
+    {
+        // 明示的に再取得。結果を破棄して再チェックし、即座に「確認中...」表示へ。
+        // 完了時に OnVersionChecked → LoadVersionResultFromSessionState で再描画される。
+        YourToolVersion.ForceRecheck();
+        LoadVersionResultFromSessionState();
+    };
+}
+```
+
+> `↻` (U+21BB) は Unity 既定エディタフォントで描画できる。グリフを使わず Unity 組み込みの
+> Refresh アイコンを使いたい場合は C# で `reloadButton.style.backgroundImage` に
+> `EditorGUIUtility.IconContent("d_Refresh").image` を設定する（常時ダーク前提なら `d_` 版が視認性良好）。
+
+---
+
 ## エラーハンドリング方針
 
 - 通信失敗・HTTP エラー・JSON パース失敗・`version` 欠落 → すべて `State.Error`。
-- `DennokoVersionChecker` は**例外を投げない**（内部で握り潰し `Debug.LogWarning` のみ）。
+- `DennokoVersionChecker` は**例外を投げない**（内部で握り潰す）。**失敗時は必ず一度 `Debug.LogWarning`**
+  で URL・httpCode・error を出す（チェックはセッション1回なので原因追跡に使える）。
+- **エラーはセッションキャッシュしない**。`StartCheckBackgroundTask` は「成功済みのみ再取得しない」
+  ため、ウィンドウを開き直す/ドメインリロードのたびに再試行し、一時的な失敗から自己回復する。
+  → 「他プロジェクトへインポート直後だけ『取得できません』が出る」の典型原因は、取り込み時の
+  ドメインリロードで in-flight のリクエストが中断されること。再試行で解消する。
 - 表示は `.dennoko-version-label--error`（`--dennoko-semantic-warning`）で警告色テキスト。
 
 ## 動作確認
