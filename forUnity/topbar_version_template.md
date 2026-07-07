@@ -98,23 +98,166 @@ C# から流し込む。
 
 ---
 
-## Step 4 — ローカル版数の定数（各プロジェクトで定義）
+## Step 4 — ローカル版数の取得と初期ロード（各プロジェクトで定義）
 
-現行バージョンとチェック先リポジトリを 1 か所にまとめる。**owner / repo は自分の
-リモートリポジトリに合わせて設定する。**
+現行バージョンをローカルの `version.json` から動的に取得し、インポート時や起動時に自動でアップデートチェックを実行するクラス。**owner / repo / GUID は自分のリポジトリ・アセットに合わせて設定する。**
+
+> **他プロジェクトへのインポートでハマりやすい 2 点（対策込み）**
+> 1. **静的コンストラクタのタイミング**: `[InitializeOnLoad]` はドメインリロード中に走り、
+>    その時点では `version.json` が **AssetDatabase 未登録**で `GUIDToAssetPath` が空を返すことがある。
+>    → 取得開始を **`EditorApplication.delayCall` で 1 tick 遅らせる**。加えて、GUID で引けなかった
+>    ときの保険として **`[CallerFilePath]` を起点にスクリプト相対でも `version.json` を探す**
+>    （コンパイル時パスなので、インポート先で再コンパイルされればそのプロジェクトの正しいパスに解決される）。
+> 2. **フォールバックの永続キャッシュ**: 読み込み失敗値をキャッシュすると、以後ずっと誤った版数のままになる。
+>    → **失敗（null）はキャッシュしない**。次回アクセスで再試行できるようにする。
 
 ```csharp
+using UnityEditor;
+using UnityEngine;
+using System;
+using System.IO;
+using System.Runtime.CompilerServices;
+
 namespace YourTool
 {
+    // インポート時（コンパイル完了時）や起動時に自動的にアップデートチェックを実行する
+    [InitializeOnLoad]
     internal static class YourToolVersion
     {
-        internal const string Current = "1.0.0";
+        // version.json の GUID (アセット移動に対応するため GUID 経由でパス解決する)
+        private const string VersionJsonGuid = "YOUR_VERSION_JSON_GUID";
+        // version.json をどうしても読めなかった場合の最終フォールバック（通常は使われない）
+        private const string FallbackVersion = "0.0.0";
+        private static string _currentCache = null;
+
+        internal static string Current
+        {
+            get
+            {
+                // 失敗（null）はキャッシュしない。インポート直後で version.json が
+                // まだ読めなかった場合でも、次回アクセス時に再試行できるようにする。
+                if (string.IsNullOrEmpty(_currentCache))
+                {
+                    _currentCache = LoadLocalVersion();
+                }
+                return string.IsNullOrEmpty(_currentCache) ? FallbackVersion : _currentCache;
+            }
+        }
 
         // チェック先（設定されているリモートリポジトリに合わせる）
         internal const string RepoOwner       = "your-owner";
         internal const string RepoName        = "your-repo";
         internal const string RepoBranch      = "main";
         internal const string VersionFilePath = "version.json";
+
+        // セッションキー。State（比較結果）は保存しない — ローカル版が後から正しく解決され得るため、
+        // 表示のたびに「保存した最新版 vs 現在のローカル版」で更新有無を再計算する（Step 6）。
+        // ここでは取得が成功したか（Error だったか）だけ保存する。
+        internal const string VerCheckDoneKey   = "YourTool_VerCheck_Done";
+        internal const string VerCheckErrorKey  = "YourTool_VerCheck_Error";
+        internal const string VerCheckLatestKey = "YourTool_VerCheck_Latest";
+        internal const string VerCheckUrlKey    = "YourTool_VerCheck_Url";
+        internal const string VerCheckMessageKey = "YourTool_VerCheck_Message";
+
+        static YourToolVersion()
+        {
+            // 静的コンストラクタはドメインリロード中に走り、この時点では version.json が
+            // AssetDatabase 未登録のことがある。delayCall で 1 tick 遅らせてから開始する。
+            EditorApplication.delayCall += StartCheckBackgroundTask;
+        }
+
+        // 同一ドメイン内での二重リクエスト防止（ドメインリロードで false に戻る）
+        private static bool _checking;
+
+        internal static void StartCheckBackgroundTask()
+        {
+            // 成功済みなら再取得しない。だがエラー時は「インポート直後の一時的な失敗
+            // （パッケージ取り込み時のドメインリロードでリクエストが中断される等）」を想定し、
+            // 次のトリガー（ウィンドウを開く / ドメインリロード）で再試行する。
+            bool done  = SessionState.GetBool(VerCheckDoneKey, false);
+            bool error = SessionState.GetBool(VerCheckErrorKey, false);
+            if (done && !error) return;
+            if (_checking) return;
+            _checking = true;
+
+            Dennoko.DennokoVersionChecker.CheckAsync(
+                RepoOwner, RepoName, RepoBranch, VersionFilePath, Current, OnVersionChecked);
+        }
+
+        private static void OnVersionChecked(Dennoko.DennokoVersionChecker.Result result)
+        {
+            _checking = false;
+            SessionState.SetBool(VerCheckDoneKey, true);
+            SessionState.SetBool(VerCheckErrorKey, result.State == Dennoko.DennokoVersionChecker.State.Error);
+            SessionState.SetString(VerCheckLatestKey, result.LatestVersion ?? string.Empty);
+            SessionState.SetString(VerCheckUrlKey, result.Url ?? string.Empty);
+            SessionState.SetString(VerCheckMessageKey, result.Message ?? string.Empty);
+
+            // すでにエディタウィンドウが開かれている場合は再描画を促す
+            var windows = Resources.FindObjectsOfTypeAll<YourToolWindow>();
+            if (windows != null && windows.Length > 0)
+            {
+                foreach (var w in windows)
+                {
+                    if (w != null)
+                    {
+                        w.LoadVersionResultFromSessionState();
+                    }
+                }
+            }
+        }
+
+        [Serializable]
+        private class VersionInfo
+        {
+            public string version;
+        }
+
+        /// <summary>ローカルの version.json を読む。読めなければ null（呼び出し側で
+        /// フォールバックし、次回アクセス時に再試行する）。</summary>
+        private static string LoadLocalVersion()
+        {
+            // 1) GUID 経由（アセット移動に追従。ただし AssetDatabase 準備前は空を返し得る）
+            var v = TryReadVersion(AssetDatabase.GUIDToAssetPath(VersionJsonGuid));
+            if (v != null) return v;
+
+            // 2) スクリプト位置からの相対探索（AssetDatabase 未準備でも解決できる保険）
+            return TryReadVersion(ResolveVersionJsonByScriptPath());
+        }
+
+        private static string TryReadVersion(string path)
+        {
+            if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+            try
+            {
+                var info = JsonUtility.FromJson<VersionInfo>(File.ReadAllText(path));
+                if (info != null && !string.IsNullOrEmpty(info.version)) return info.version;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[YourToolVersion] Failed to read version.json ({path}): {e.Message}");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// このスクリプトの位置を起点に上位フォルダを辿って version.json を探す。
+        /// [CallerFilePath] はコンパイル時パスなので、他プロジェクトへインポートして
+        /// 再コンパイルされれば、そのプロジェクト内の正しいパスに解決される
+        /// （AssetDatabase のインポート完了状況に依存しない）。
+        /// </summary>
+        private static string ResolveVersionJsonByScriptPath([CallerFilePath] string scriptPath = null)
+        {
+            if (string.IsNullOrEmpty(scriptPath)) return null;
+            var dir = Path.GetDirectoryName(scriptPath);
+            for (int i = 0; i < 5 && !string.IsNullOrEmpty(dir); i++)
+            {
+                var candidate = Path.Combine(dir, "version.json");
+                if (File.Exists(candidate)) return candidate;
+                dir = Path.GetDirectoryName(dir);
+            }
+            return null;
+        }
     }
 }
 ```
@@ -248,21 +391,36 @@ namespace Dennoko
 
         private static Result BuildResult(UnityWebRequest req, string localVersion)
         {
+            string url = req != null ? req.url : "(null)";
 #if UNITY_2020_2_OR_NEWER
             bool hasError = req.result != UnityWebRequest.Result.Success;
 #else
             bool hasError = req.isNetworkError || req.isHttpError;
 #endif
-            if (hasError) return Error(localVersion);
+            // 失敗は必ず一度警告する（チェックはセッション1回のみ）。URL・httpCode・error が
+            // 「最新情報を取得できません」の切り分け材料になる（owner/repo/branch・push 有無・回線）。
+            if (hasError)
+            {
+                Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: url={url} httpCode={req.responseCode} error={req.error}");
+                return Error(localVersion);
+            }
 
             var json = req.downloadHandler != null ? req.downloadHandler.text : null;
-            if (string.IsNullOrEmpty(json)) return Error(localVersion);
+            if (string.IsNullOrEmpty(json))
+            {
+                Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: レスポンスが空。url={url} httpCode={req.responseCode}");
+                return Error(localVersion);
+            }
 
             VersionInfo info;
             try { info = JsonUtility.FromJson<VersionInfo>(json); }
-            catch { return Error(localVersion); }
+            catch (Exception e) { Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: JSON パース失敗: {e.Message} url={url}"); return Error(localVersion); }
 
-            if (info == null || string.IsNullOrEmpty(info.version)) return Error(localVersion);
+            if (info == null || string.IsNullOrEmpty(info.version))
+            {
+                Debug.LogWarning($"[DennokoVersionChecker] 取得失敗: version フィールドが空。url={url}");
+                return Error(localVersion);
+            }
 
             var state = IsNewer(info.version, localVersion) ? State.UpdateAvailable : State.UpToDate;
             return new Result
@@ -284,7 +442,13 @@ namespace Dennoko
             Message = null,
         };
 
-        /// <summary>latest がローカル版より新しいか。SemVer 優先、パース不能時は文字列不一致で判定。</summary>
+        /// <summary>
+        /// latest がローカル版より新しいか（＝更新あり）。State をキャッシュせず、表示側が
+        /// 「保存した最新版 vs 現在のローカル版」で都度再計算できるよう公開する（Step 6）。
+        /// </summary>
+        public static bool IsUpdateAvailable(string latestVersion, string localVersion)
+            => IsNewer(latestVersion, localVersion);
+
         private static bool IsNewer(string latest, string local)
         {
             var l = Normalize(latest);
@@ -294,12 +458,27 @@ namespace Dennoko
             return !string.Equals(l, c, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// 比較用に正規化する。BOM / 先頭 v / プレリリース・ビルドメタデータを除去し、
+        /// 2 桁以下（"3", "3.0"）は 3 桁（"3.0.0"）へゼロ埋めする。
+        /// ゼロ埋めしないと Version 型で Build=-1 となり "3.0" &lt; "3.0.0" の誤判定が出る。
+        /// </summary>
         private static string Normalize(string v)
         {
-            if (string.IsNullOrEmpty(v)) return "0";
-            v = v.Trim();
-            if (v.StartsWith("v") || v.StartsWith("V")) v = v.Substring(1);
-            return v;
+            if (string.IsNullOrEmpty(v)) return "0.0.0";
+            v = v.Trim().Trim('﻿').Trim(); // 空白と BOM を除去
+            if (v.Length > 0 && (v[0] == 'v' || v[0] == 'V')) v = v.Substring(1);
+            // "1.2.0-beta" / "1.2.0+build" などのサフィックスは比較対象外
+            int cut = v.IndexOfAny(new[] { '-', '+', ' ' });
+            if (cut >= 0) v = v.Substring(0, cut);
+            if (string.IsNullOrEmpty(v)) return "0.0.0";
+
+            var parts = v.Split('.');
+            if (parts.Length >= 3) return v;
+            var padded = new string[3];
+            for (int i = 0; i < 3; i++)
+                padded[i] = (i < parts.Length && !string.IsNullOrEmpty(parts[i])) ? parts[i] : "0";
+            return string.Join(".", padded);
         }
     }
 }
@@ -309,18 +488,12 @@ namespace Dennoko
 
 ## Step 6 — EditorWindow 側の配線
 
-`CreateGUI()` でバージョンラベルを取得し、チェックを起動する。結果を保持しておき、
-言語切替時（`RefreshChromeLabels()` 相当）にも再適用する。**同一 Unity セッション中の
-再フェッチは `SessionState` で抑制**する（ウィンドウ開閉のたびに叩かない）。
+`CreateGUI()` でバージョンラベルを取得し、キャッシュされたチェック結果を読み込んでラベルに反映する。すでにバックグラウンドチェックが終わっていれば即時に反映され、終わっていなければバックグラウンドタスクをトリガーします。
 
 ```csharp
 private Label _versionLabel;
 private DennokoVersionChecker.Result _versionResult =
     new DennokoVersionChecker.Result { State = DennokoVersionChecker.State.Checking, LocalVersion = YourToolVersion.Current };
-
-const string VerCheckDoneKey   = "YourTool_VerCheck_Done";
-const string VerCheckStateKey  = "YourTool_VerCheck_State";
-const string VerCheckLatestKey = "YourTool_VerCheck_Latest";
 
 // CreateGUI() 内で:
 //   _versionLabel = root.Q<Label>("version-label");
@@ -329,30 +502,40 @@ const string VerCheckLatestKey = "YourTool_VerCheck_Latest";
 
 private void StartVersionCheck()
 {
-    if (SessionState.GetBool(VerCheckDoneKey, false))
-    {
-        _versionResult = new DennokoVersionChecker.Result
-        {
-            State = (DennokoVersionChecker.State)SessionState.GetInt(VerCheckStateKey, 0),
-            LocalVersion = YourToolVersion.Current,
-            LatestVersion = SessionState.GetString(VerCheckLatestKey, string.Empty),
-        };
-        ApplyVersionLabel();
-        return;
-    }
-
-    ApplyVersionLabel(); // Checking 状態を先に反映
-    DennokoVersionChecker.CheckAsync(
-        YourToolVersion.RepoOwner, YourToolVersion.RepoName, YourToolVersion.RepoBranch,
-        YourToolVersion.VersionFilePath, YourToolVersion.Current, OnVersionChecked);
+    LoadVersionResultFromSessionState();
+    // 取得の要否は StartCheckBackgroundTask 内で判定する（成功済みなら何もしない／
+    // 前回エラーなら再試行）。ウィンドウを開き直すたびに一時的な失敗から自己回復できる。
+    YourToolVersion.StartCheckBackgroundTask();
 }
 
-private void OnVersionChecked(DennokoVersionChecker.Result result)
+internal void LoadVersionResultFromSessionState()
 {
-    _versionResult = result;
-    SessionState.SetBool(VerCheckDoneKey, true);
-    SessionState.SetInt(VerCheckStateKey, (int)result.State);
-    SessionState.SetString(VerCheckLatestKey, result.LatestVersion ?? string.Empty);
+    // State（更新有無）はキャッシュせず、常に「現在のローカル版 vs 取得済みの最新版」で
+    // 再計算する。こうしないと、取得時のローカル版が後から正しく解決された場合に
+    // 「v3.0.0 更新あり 3.0.0」のような矛盾表示が残ってしまう。
+    string local  = YourToolVersion.Current;
+    string latest = SessionState.GetString(YourToolVersion.VerCheckLatestKey, string.Empty);
+    bool   done   = SessionState.GetBool(YourToolVersion.VerCheckDoneKey, false);
+    bool   error  = SessionState.GetBool(YourToolVersion.VerCheckErrorKey, false);
+
+    DennokoVersionChecker.State state;
+    if (!done)
+        state = DennokoVersionChecker.State.Checking;
+    else if (error || string.IsNullOrEmpty(latest))
+        state = DennokoVersionChecker.State.Error;
+    else if (DennokoVersionChecker.IsUpdateAvailable(latest, local))
+        state = DennokoVersionChecker.State.UpdateAvailable;
+    else
+        state = DennokoVersionChecker.State.UpToDate;
+
+    _versionResult = new DennokoVersionChecker.Result
+    {
+        State = state,
+        LocalVersion = local,
+        LatestVersion = latest,
+        Url = SessionState.GetString(YourToolVersion.VerCheckUrlKey, string.Empty),
+        Message = SessionState.GetString(YourToolVersion.VerCheckMessageKey, string.Empty)
+    };
     ApplyVersionLabel();
 }
 
@@ -393,20 +576,100 @@ private void ApplyVersionLabel()
 
 ---
 
+## Step 7 — 手動リロードボタン（任意・推奨）
+
+「最新情報を取得できません」が出たときに、ユーザーが**その場で再取得を試せる** ↻ ボタンを
+バージョン表記の右に置く。取得失敗（オフライン／取り込み直後の中断）の切り分けに有効。
+
+**UXML**（`version-label` の直後、titlegroup 内）:
+```xml
+<ui:Label name="version-label" text="" class="dennoko-version-label" />
+<ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
+```
+
+**USS**（`.dennoko-version-label` の近く。色は `var(--dennoko-*)` 経由）:
+```css
+.dennoko-root .dennoko-version-reload-button {
+    width: 18px;
+    height: 18px;
+    margin-left: 4px;
+    padding: 0;
+    font-size: 12px;
+    color: var(--dennoko-text-tertiary);
+}
+.dennoko-root .dennoko-version-reload-button:hover {
+    color: var(--dennoko-text-primary);
+}
+```
+
+**版数クラス側に再取得 API を追加**（Step 4 の `YourToolVersion` に）:
+```csharp
+/// <summary>手動での再取得。前回結果（成功/失敗・ローカル版キャッシュ）を破棄して再チェックする。</summary>
+internal static void ForceRecheck()
+{
+    if (_checking) return; // 進行中なら何もしない
+    _currentCache = null;  // ローカル版も読み直す（version.json を直したケースに対応）
+    SessionState.SetBool(VerCheckDoneKey, false);
+    SessionState.SetBool(VerCheckErrorKey, false);
+    StartCheckBackgroundTask();
+}
+```
+
+**EditorWindow 側の配線**（`version-reload-button` を取得して click を接続）:
+```csharp
+var reloadButton = root.Q<Button>("version-reload-button");
+if (reloadButton != null)
+{
+    reloadButton.tooltip = Loc("アップデートを再確認"); // ← 各ツールの i18n に置換
+    reloadButton.clicked += () =>
+    {
+        // 明示的に再取得。結果を破棄して再チェックし、即座に「確認中...」表示へ。
+        // 完了時に OnVersionChecked → LoadVersionResultFromSessionState で再描画される。
+        YourToolVersion.ForceRecheck();
+        LoadVersionResultFromSessionState();
+    };
+}
+```
+
+> `↻` (U+21BB) は Unity 既定エディタフォントで描画できる。グリフを使わず Unity 組み込みの
+> Refresh アイコンを使いたい場合は C# で `reloadButton.style.backgroundImage` に
+> `EditorGUIUtility.IconContent("d_Refresh").image` を設定する（常時ダーク前提なら `d_` 版が視認性良好）。
+
+---
+
 ## エラーハンドリング方針
 
 - 通信失敗・HTTP エラー・JSON パース失敗・`version` 欠落 → すべて `State.Error`。
+<<<<<<< HEAD
 - 指定ブランチで `State.Error` になった場合は **`"main"` にフォールバック**して再取得し、
   そこでも失敗して初めて `State.Error` を確定する（デフォルトブランチが master / main
   どちらでも動く）。`RepoBranch` を正しく設定すればフォールバックは発生せず 1 回で済む。
 - `DennokoVersionChecker` は**例外を投げない**（内部で握り潰し `Debug.LogWarning` のみ）。
+=======
+- `DennokoVersionChecker` は**例外を投げない**（内部で握り潰す）。**失敗時は必ず一度 `Debug.LogWarning`**
+  で URL・httpCode・error を出す（チェックはセッション1回なので原因追跡に使える）。
+- **エラーはセッションキャッシュしない**。`StartCheckBackgroundTask` は「成功済みのみ再取得しない」
+  ため、ウィンドウを開き直す/ドメインリロードのたびに再試行し、一時的な失敗から自己回復する。
+  → 「他プロジェクトへインポート直後だけ『取得できません』が出る」の典型原因は、取り込み時の
+  ドメインリロードで in-flight のリクエストが中断されること。再試行で解消する。
+>>>>>>> cdede75bb2e621d2b0452c822badd3904bfe37c1
 - 表示は `.dennoko-version-label--error`（`--dennoko-semantic-warning`）で警告色テキスト。
 
 ## 動作確認
 
 1. ウィンドウを開き、タイトル横に `v1.0.0` が出る。
+<<<<<<< HEAD
 2. ローカル定数を下げる（例 `0.9.0`）と `--update` 色で「更新あり <最新版>」。
 3. ローカル定数とリモートが一致で、バージョンのみ表示。
 4. `RepoBranch` を実在しない値にしても、`main` に version.json があればフォールバックで
    バージョンが出る。owner/repo を不正値にする or オフラインなら `--error` 色の取得失敗テキスト、例外なし。
+=======
+2. ローカルの `version.json` を下げる（例 `0.9.0`）と `--update` 色で「更新あり <最新版>」。
+3. ローカルとリモートが一致で、バージョンのみ表示（更新ありにならない）。
+4. repo/branch を不正値にする or オフラインで `--error` 色の取得失敗テキスト、例外なし。
+>>>>>>> cdede75bb2e621d2b0452c822badd3904bfe37c1
 5. 言語切替で接尾辞テキストが切り替わる。
+6. **他プロジェクトへインポート**して開く → `v0.0.0` などのフォールバックに固定されず、
+   正しいローカル版が表示される（GUID 未解決でもスクリプト相対探索で解決される）。
+7. **矛盾表示が残らない**こと: 一致しているのに「更新あり <自分と同じ版>」が出ない
+   （State はキャッシュせず表示時に再計算されるため自己修復する）。
