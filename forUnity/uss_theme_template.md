@@ -305,6 +305,29 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     color: var(--dennoko-text-primary);
 }
 
+/* ヘッダー左側: タイトル + バージョンをまとめる行（topbar_version_template.md 参照） */
+.dennoko-header-titlegroup {
+    flex-direction: row;
+    align-items: center;
+}
+
+/* バージョン表記 (タイトル横の小さな補足テキスト)
+   ※ .dennoko-root .unity-text-element (詳細度 0,2,0) に負けないよう .dennoko-root を前置する */
+.dennoko-root .dennoko-version-label {
+    font-size: 10px;
+    margin-left: 6px;
+    color: var(--dennoko-text-tertiary);
+}
+/* 更新あり (目立たせるため鮮やかな緑) */
+.dennoko-root .dennoko-version-label--update {
+    color: var(--dennoko-semantic-success);
+    -unity-font-style: bold;
+}
+/* 最新版の取得に失敗 */
+.dennoko-root .dennoko-version-label--error {
+    color: var(--dennoko-semantic-warning);
+}
+
 /* セクション見出し (大文字英字を想定した小さめの見出し) */
 .dennoko-section-title {
     font-size: 10px;

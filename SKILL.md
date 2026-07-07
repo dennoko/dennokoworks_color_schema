@@ -54,6 +54,7 @@ description: dennokoworks フローティングデザインシステムを Unity
 | `forUnity/uss_theme_template.md` | テーマ USS (`DennokoTheme.uss`) 全文。最初にプロジェクトに追加するファイル |
 | `forUnity/window_structure_template.md` | EditorWindow の UXML + C# 骨格。コピーして使う |
 | `forUnity/inspector_structure_template.md` | CustomEditor (Inspector) の UXML + C# 骨格。コピーして使う |
+| `forUnity/topbar_version_template.md` | トップバーのバージョン表記 + GitHub アップデートチェック。UXML/USS + 自己完結 C# ヘルパー |
 | `forUnity/techniques.md` | UI Toolkit 固有の実装テクニック・罠・IMGUI からの移行マッピング |
 | `Docs/colors_spec.md` | カラーの役割・意図の詳細説明 |
 | `Docs/design_reference.md` | デザインコンセプト（フローティングデザイン）の解説 |

@@ -30,6 +30,7 @@
 | `uss_theme_template.md` | コピーして使うテーマ USS (`DennokoTheme.uss`) 全文 |
 | `window_structure_template.md` | EditorWindow の UXML + C# 骨格 |
 | `inspector_structure_template.md` | CustomEditor (Inspector) の UXML + C# 骨格 |
+| `topbar_version_template.md` | トップバーのバージョン表記 + GitHub アップデートチェック（UXML/USS + 自己完結 C# ヘルパー） |
 | `techniques.md` | UI Toolkit 固有の実装テクニック・罠・IMGUI からの移行マッピング |
 
 ---
