@@ -277,6 +277,7 @@ namespace YourTool
 ```csharp
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -640,34 +641,23 @@ if (reloadButton != null)
 ## エラーハンドリング方針
 
 - 通信失敗・HTTP エラー・JSON パース失敗・`version` 欠落 → すべて `State.Error`。
-<<<<<<< HEAD
 - 指定ブランチで `State.Error` になった場合は **`"main"` にフォールバック**して再取得し、
   そこでも失敗して初めて `State.Error` を確定する（デフォルトブランチが master / main
   どちらでも動く）。`RepoBranch` を正しく設定すればフォールバックは発生せず 1 回で済む。
-- `DennokoVersionChecker` は**例外を投げない**（内部で握り潰し `Debug.LogWarning` のみ）。
-=======
 - `DennokoVersionChecker` は**例外を投げない**（内部で握り潰す）。**失敗時は必ず一度 `Debug.LogWarning`**
   で URL・httpCode・error を出す（チェックはセッション1回なので原因追跡に使える）。
 - **エラーはセッションキャッシュしない**。`StartCheckBackgroundTask` は「成功済みのみ再取得しない」
   ため、ウィンドウを開き直す/ドメインリロードのたびに再試行し、一時的な失敗から自己回復する。
   → 「他プロジェクトへインポート直後だけ『取得できません』が出る」の典型原因は、取り込み時の
   ドメインリロードで in-flight のリクエストが中断されること。再試行で解消する。
->>>>>>> cdede75bb2e621d2b0452c822badd3904bfe37c1
 - 表示は `.dennoko-version-label--error`（`--dennoko-semantic-warning`）で警告色テキスト。
 
 ## 動作確認
 
 1. ウィンドウを開き、タイトル横に `v1.0.0` が出る。
-<<<<<<< HEAD
-2. ローカル定数を下げる（例 `0.9.0`）と `--update` 色で「更新あり <最新版>」。
-3. ローカル定数とリモートが一致で、バージョンのみ表示。
-4. `RepoBranch` を実在しない値にしても、`main` に version.json があればフォールバックで
-   バージョンが出る。owner/repo を不正値にする or オフラインなら `--error` 色の取得失敗テキスト、例外なし。
-=======
 2. ローカルの `version.json` を下げる（例 `0.9.0`）と `--update` 色で「更新あり <最新版>」。
 3. ローカルとリモートが一致で、バージョンのみ表示（更新ありにならない）。
 4. repo/branch を不正値にする or オフラインで `--error` 色の取得失敗テキスト、例外なし。
->>>>>>> cdede75bb2e621d2b0452c822badd3904bfe37c1
 5. 言語切替で接尾辞テキストが切り替わる。
 6. **他プロジェクトへインポート**して開く → `v0.0.0` などのフォールバックに固定されず、
    正しいローカル版が表示される（GUID 未解決でもスクリプト相対探索で解決される）。
