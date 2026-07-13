@@ -20,7 +20,8 @@ namespace YourNamespace   // ← 変更する
             container.AddToClassList("dennoko-root");
             container.AddToClassList("dennoko-inspector-root");
             // USS ロード失敗時も背景が明るくならないよう Surface0 を C# 側でも保証
-            container.style.backgroundColor = new Color32(0x12, 0x12, 0x12, 0xFF);
+            // (StyleColor への暗黙変換は Color のみ。Color32 のままでは CS0029 になる)
+            container.style.backgroundColor = (Color)new Color32(0x12, 0x12, 0x12, 0xFF);
 
             // USS のロードと適用
             string ussPath = AssetDatabase.GUIDToAssetPath(USS_GUID);

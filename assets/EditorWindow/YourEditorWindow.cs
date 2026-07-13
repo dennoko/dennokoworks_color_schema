@@ -30,7 +30,8 @@ namespace YourNamespace   // ← 変更する
             // テーマ非依存のためのルートクラスを適用
             root.AddToClassList("dennoko-root");
             // USS ロード失敗時も背景が明るくならないよう Surface0 を C# 側でも保証
-            root.style.backgroundColor = new Color32(0x12, 0x12, 0x12, 0xFF);
+            // (StyleColor への暗黙変換は Color のみ。Color32 のままでは CS0029 になる)
+            root.style.backgroundColor = (Color)new Color32(0x12, 0x12, 0x12, 0xFF);
             root.style.flexGrow = 1;
 
             // USS のロードと適用
