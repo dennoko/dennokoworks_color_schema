@@ -251,11 +251,11 @@
    展開矢印はビルトインアイコンを明示指定して復元する。
    d_ 系を指定することでテーマ非依存にもなる。※アイコン名は要実機確認 */
 .dennoko-root .unity-foldout__toggle .unity-toggle__checkmark {
-    background-image: resource("d_IN foldout");
+    background-image: resource("IN foldout");
 }
 
 .dennoko-root .unity-foldout__toggle:checked .unity-toggle__checkmark {
-    background-image: resource("d_IN foldout on");
+    background-image: resource("IN foldout on");
 }
 
 /* ─── ⑥ スライダー ───────────────────────────────────────── */
@@ -283,9 +283,9 @@
    間延びして見える。画像を破棄してフラットな塗りに置き換える。 */
 .dennoko-root .unity-min-max-slider .unity-base-field__input,
 .dennoko-root .unity-min-max-slider__input {
-    height: 18px;
-    padding-top: 0;
-    padding-bottom: 0;
+    height: 28px;
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
 
 .dennoko-root .unity-min-max-slider__tracker {
