@@ -56,7 +56,7 @@ UI Toolkit (UXML/USS) コードとして実装する。
 | アプリ背景 | `#121212` | `--dennoko-surface-0` | — |
 | カード・入力欄背景 | `#1e1e1e` | `--dennoko-surface-1` | — |
 | ツールバー・ホバー背景 | `#2c2c2c` | `--dennoko-surface-2` | — |
-| 境界線・セパレーター | `#3a3a3a` | `--dennoko-outline` | — |
+| 境界線・セパレーター | `#484848` | `--dennoko-outline` | — |
 | タイトル・強調 | `#ffffff` | `--dennoko-text-primary` | `.dennoko-text-primary` |
 | 本文・ラベル | `#cccccc` | `--dennoko-text-secondary` | （デフォルト。指定不要） |
 | 補足・見出し | `#aaaaaa` | `--dennoko-text-tertiary` | `.dennoko-text-tertiary` |

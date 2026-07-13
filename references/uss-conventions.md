@@ -50,7 +50,7 @@ UXML のインライン style や C# の `style.color` にも直書きしない�
 
 | やりたいこと | CSS | USS |
 |---|---|---|
-| 枠線 | `border: 1px solid #3a3a3a;` | ショートハンド不可。`border-width: 1px; border-color: ...;` に分ける |
+| 枠線 | `border: 1px solid #484848;` | ショートハンド不可。`border-width: 1px; border-color: ...;` に分ける |
 | 背景 | `background: #121212;` | `background` 不可。`background-color` を使う |
 | 太字 | `font-weight: bold;` | `-unity-font-style: bold;` |
 | 文字揃え | `text-align: center;` | `-unity-text-align: middle-center;` |
