@@ -45,6 +45,15 @@ UI Toolkit (UXML/USS) コードとして実装する。
 5. **UXML / USS は GUID でロードする。**
    テンプレートの `YOUR_*_GUID_HERE` プレースホルダーは、Unity インポート後に
    `.meta` の GUID（または右クリック → Copy GUID）へ必ず置き換える。
+6. **標準フォントは OS のメイリオを SDF FontAsset として動的参照する。**
+   フォントアセットは同梱しない。
+   `UnityEngine.TextCore.Text.FontAsset.CreateFontAsset("Meiryo", "Regular")` で生成し、
+   `FontDefinition.FromSDFFont()` でルート要素の `unityFontDefinition` に適用する
+   （テンプレート C# の `GetUIFontAsset()` に実装済み）。
+   未搭載環境ではエディタ標準フォントに自動フォールバックする。
+   ⚠ レガシー Font（`Font.CreateDynamicFontFromOSFont`）+ `FontDefinition.FromFont()`
+   は UI Toolkit ではグリフ生成に失敗し**文字が一切表示されなくなる**ため使用禁止
+   （`references/troubleshooting.md` §8）。
 
 ## カラーパレット（クイックリファレンス）
 

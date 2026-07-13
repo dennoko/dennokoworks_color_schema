@@ -15,6 +15,37 @@ namespace YourNamespace   // ← 変更する
         private Label _statusLabel;
         private IVisualElementScheduledItem _statusResetSchedule;
 
+        // ─── 標準フォント: OS のメイリオ ─────────────────────────────────
+        // フォントアセットを同梱せず、端末インストール済みのメイリオを動的参照する。
+        // ⚠ UI Toolkit のテキストは TextCore で描画されるため、レガシー Font
+        //   (Font.CreateDynamicFontFromOSFont) を FontDefinition.FromFont() で渡すと
+        //   グリフ生成に失敗し文字が一切表示されなくなる。必ず OS フォントから
+        //   直接 SDF FontAsset を生成すること (CreateFontAsset は Unity 2022.3 で public)。
+        // 未搭載環境 (Mac/Linux 等) では null を返し、エディタ標準フォントのままになる。
+        private const string UI_FONT_FAMILY = "Meiryo";
+        private static UnityEngine.TextCore.Text.FontAsset _uiFontAsset;
+        private static bool _uiFontSearched;
+
+        private static UnityEngine.TextCore.Text.FontAsset GetUIFontAsset()
+        {
+            if (_uiFontSearched) return _uiFontAsset;
+            _uiFontSearched = true;
+
+            try
+            {
+                _uiFontAsset = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset(UI_FONT_FAMILY, "Regular");
+                if (_uiFontAsset != null)
+                {
+                    _uiFontAsset.hideFlags = HideFlags.HideAndDontSave;
+                }
+            }
+            catch
+            {
+                _uiFontAsset = null;
+            }
+            return _uiFontAsset;
+        }
+
         [MenuItem("Tools/Your Tool Name")]   // ← メニューパスを変更する
         public static void ShowWindow()
         {
@@ -33,6 +64,13 @@ namespace YourNamespace   // ← 変更する
             // (StyleColor への暗黙変換は Color のみ。Color32 のままでは CS0029 になる)
             root.style.backgroundColor = (Color)new Color32(0x12, 0x12, 0x12, 0xFF);
             root.style.flexGrow = 1;
+
+            // 標準フォント: OS のメイリオが使えれば全体に適用（全テキスト要素へ継承される）
+            var uiFontAsset = GetUIFontAsset();
+            if (uiFontAsset != null)
+            {
+                root.style.unityFontDefinition = FontDefinition.FromSDFFont(uiFontAsset);
+            }
 
             // USS のロードと適用
             string ussPath = AssetDatabase.GUIDToAssetPath(USS_GUID);

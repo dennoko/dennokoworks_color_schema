@@ -17,6 +17,7 @@
 | Inspector の PropertyField が空 | `Bind()` 忘れ | references/inspector-guide.md §3 |
 | Inspector の左右に明るい隙間 | InspectorElement の余白 | references/inspector-guide.md §1 |
 | IMGUI 併用部分が Light テーマで読めない | IMGUI はテーマ USS の対象外 | §7 |
+| 文字が一切表示されない（レイアウトは正常） | OS フォントをレガシー Font 経由で適用 | §8 |
 
 ## 1. スタイルが全く適用されない
 
@@ -141,6 +142,33 @@ var tex = (Texture2D)EditorGUILayout.ObjectField(new GUIContent("画像", "説�
 EditorGUIUtility.labelWidth = originalLabelWidth;
 ```
 
+## 8. 文字が一切表示されない — OS フォントはレガシー Font 経由で適用しない
+
+標準フォント（OS のメイリオ。SKILL.md 絶対規則 6）を適用する際、
+`Font.CreateDynamicFontFromOSFont()` で作ったレガシー `Font` を
+`FontDefinition.FromFont()` で渡してはならない。
+
+UI Toolkit のテキストは TextCore（SDF）で描画されるが、OS 動的フォントは
+フォントデータ本体を持たない参照オブジェクトのため、TextCore が FontAsset へ
+変換できずグリフ生成が静かに失敗する。結果、レイアウトやスタイルは正常なまま
+**テキストだけがすべて消える**（実際に発生した事故。エラーも出ない）。
+
+正しい実装（テンプレート C# の `GetUIFontAsset()` に定義済み）:
+
+```csharp
+// OS フォントから直接 SDF FontAsset を生成する（Unity 2022.3 で public）
+var fontAsset = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset("Meiryo", "Regular");
+if (fontAsset != null)
+{
+    fontAsset.hideFlags = HideFlags.HideAndDontSave;
+    root.style.unityFontDefinition = FontDefinition.FromSDFFont(fontAsset);
+}
+```
+
+- フォントが見つからない場合は `Unable to find a font file...` というログと共に
+  null が返るだけなので、そのままエディタ標準フォントにフォールバックする
+- 生成した FontAsset は static にキャッシュし `HideAndDontSave` を付ける
+
 ## 動作確認チェックリスト（実装完了時に必ず実施）
 
 1. **Preferences でテーマを Light / Dark 両方に切り替えたか？**
@@ -159,3 +187,5 @@ EditorGUIUtility.labelWidth = originalLabelWidth;
    - 固定クローム（ヘッダー・フッター・ステータスバー）に `flex-shrink: 0` が付いており、
      縮小時に `.dennoko-scroll`（ScrollView）側だけが縮むか
 8. **テクスチャ型 `ObjectField` の Select ボタンが崩れて被っていないか？**（IMGUI 併用時。§7）
+9. **文字がメイリオで表示されているか？**（標準フォント。SKILL.md 絶対規則 6）
+   - 文字が全部消えている場合はレガシー Font 経由で適用している（§8）
