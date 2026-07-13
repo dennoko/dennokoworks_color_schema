@@ -23,7 +23,7 @@ UI Toolkit (UXML/USS) コードとして実装する。
 | バージョン表記 + 更新チェックを付ける | `assets/VersionCheck/`（C# × 2） | `references/version-check-guide.md` |
 | IMGUI 実装を UI Toolkit へ移行する | 上記 Window/Inspector 一式 | `references/imgui-migration.md` |
 | 見た目が崩れた・テーマ切替で壊れた | — | `references/troubleshooting.md`（症状別表あり） |
-| デザインコンセプトを深く知る | — | `Docs/design_reference.md` / `Docs/colors_spec.md` / `example/index.html` |
+| デザインコンセプトを深く知る | — | `Docs/design_reference.md` / `Docs/colors_spec.md` |
 
 テンプレートは**実ファイルとして assets/ にある**。内容を転写せずファイルごとコピーし、
 ガイド記載のカスタマイズポイント（namespace・クラス名・GUID 等）だけ書き換える。
