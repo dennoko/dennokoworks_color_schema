@@ -18,6 +18,7 @@
 │ │ [☑] TOGGLE SECTION     [Reset]   │ │  ← .dennoko-toggle-header
 │ │  [スライダーなど]                 │ │  ← name="...-content"
 │ └──────────────────────────────────┘ │
+│ ──────────────────────────────────── │  ← .dennoko-separator
 │ ┌──────────────────────────────────┐ │
 │ │ [      Apply & Save (Primary)   ]│ │  ← .dennoko-card .dennoko-footer
 │ │ [         Reset All             ]│ │
