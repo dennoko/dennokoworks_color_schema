@@ -47,7 +47,9 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 
     /* インタラクション */
     --dennoko-accent: #ffffff;                          /* アクセントカラー */
-    --dennoko-hover-overlay: rgba(255, 255, 255, 0.05); /* ホバー時の重ね色 */
+    /* ホバー時の重ね色 (予約: この USS 内では未使用。C# から動的に半透明レイヤーを
+       重ねる場合などに使う。不要ならプロジェクト側で削除してよい) */
+    --dennoko-hover-overlay: rgba(255, 255, 255, 0.05);
 
     /* ステータスバー用の派生色 (semantic 色を Surface1 に馴染ませたもの) */
     --dennoko-status-success-bg: rgba(76, 175, 80, 0.25);
@@ -113,8 +115,13 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     color: var(--dennoko-text-disabled);
 }
 
+/* ボタンバリアント
+   ※ .unity-button を連結して詳細度を (0,3,0) にし、上の汎用リセット
+   .dennoko-root .unity-button (0,2,0) や :hover (0,3,0) に確実に勝たせる。
+   USS に !important は存在しないため、詳細度と定義順(同数は後勝ち)で解決する。 */
+
 /* Primary Action ボタン (Apply & Save 等) */
-.dennoko-root .dennoko-button-primary {
+.dennoko-root .unity-button.dennoko-button-primary {
     background-color: var(--dennoko-surface-2);
     -unity-font-style: bold;
     font-size: 13px;
@@ -122,40 +129,48 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 }
 
 /* Secondary Action ボタン (Reset All 等) */
-.dennoko-root .dennoko-button-secondary {
+.dennoko-root .unity-button.dennoko-button-secondary {
     font-size: 11px;
     height: 26px;
     color: var(--dennoko-text-secondary);
 }
 
-/* Toggle ボタン型のアクティブ状態用 (ON/OFF 切り替えボタン等) */
-.dennoko-root .dennoko-button-active {
-    background-color: var(--dennoko-surface-2) !important;
-    color: var(--dennoko-text-primary) !important;
-    -unity-font-style: bold;
-}
-.dennoko-root .dennoko-button-active:hover {
-    background-color: var(--dennoko-outline) !important;
+.dennoko-root .unity-button.dennoko-button-secondary:hover {
+    color: var(--dennoko-text-primary);
 }
 
-.dennoko-root .dennoko-button-secondary:hover {
+/* Toggle ボタン型のアクティブ状態用 (ON/OFF 切り替えボタン等) */
+.dennoko-root .unity-button.dennoko-button-active {
+    background-color: var(--dennoko-surface-2);
     color: var(--dennoko-text-primary);
+    -unity-font-style: bold;
+}
+.dennoko-root .unity-button.dennoko-button-active:hover {
+    background-color: var(--dennoko-outline);
 }
 
 /* ─── ③ 入力フィールドのリセット ─────────────────────────
    TextField / IntegerField / FloatField / DropdownField / EnumField /
    ObjectField など、.unity-base-field__input を持つすべてに適用される。 */
 
-.dennoko-root .unity-base-field__input,
-.dennoko-root .unity-base-field__input .unity-text-element,
-.dennoko-root .unity-base-field__input .unity-label,
-.dennoko-root .unity-object-field__input .unity-object-field-display__label {
+/* ボックススタイル (背景・枠・パディング) は外側の __input のみに適用する */
+.dennoko-root .unity-base-field__input {
     background-color: var(--dennoko-surface-1);
     border-color: var(--dennoko-outline);
     border-width: 1px;
     border-radius: 4px;
-    color: var(--dennoko-text-primary) !important;
+    color: var(--dennoko-text-primary);
     padding: 3px 6px;
+}
+
+/* 内側のテキスト要素には color のみを適用する。
+   ⚠ ボックススタイルを内側にも掛けるとフィールド内部に二重の枠・
+   二重のパディングが生まれてレイアウトが崩れる。
+   Light テーマの黒文字上書きは、この子孫セレクタの詳細度 (0,3,0) で防ぐ
+   (USS に !important は存在しない)。 */
+.dennoko-root .unity-base-field__input .unity-text-element,
+.dennoko-root .unity-object-field__input .unity-object-field-display__label {
+    color: var(--dennoko-text-primary);
 }
 
 .dennoko-root .unity-base-field:hover .unity-base-field__input {
@@ -168,12 +183,25 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     border-color: var(--dennoko-accent);
 }
 
-/* ドロップダウンの矢印アイコン (Light テーマの黒矢印を防ぐ) */
+/* テキストキャレットと選択範囲の色
+   (Light テーマでは黒キャレットになり、暗い入力欄で見えなくなる) ※要実機確認 */
+.dennoko-root .unity-base-text-field__input {
+    --unity-cursor-color: var(--dennoko-text-primary);
+    --unity-selection-color: rgba(100, 181, 246, 0.4);
+}
+
+/* ドロップダウンの矢印アイコン
+   ⚠ tint は「乗算」のため、Light テーマの黒い矢印画像は明るくできない。
+   ダークスキン用 (d_ 接頭辞) のビルトインアイコンを明示指定して
+   画像自体をテーマ非依存にする。※アイコン名は要実機確認 (techniques.md §4) */
 .dennoko-root .unity-base-popup-field__arrow {
+    background-image: resource("d_dropdown");
     -unity-background-image-tint-color: var(--dennoko-text-secondary);
 }
 
-/* ObjectField のセレクタボタン */
+/* ObjectField のセレクタボタン
+   ⚠ tint は乗算 — Light テーマでピッカーアイコンが見えない場合は
+   上記の矢印と同様に background-image へ d_ 系アイコンを明示指定する */
 .dennoko-root .unity-object-field__selector {
     background-color: var(--dennoko-surface-2);
     -unity-background-image-tint-color: var(--dennoko-text-secondary);
@@ -194,7 +222,9 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 
 .dennoko-root .unity-toggle:checked .unity-toggle__checkmark {
     background-color: var(--dennoko-accent);
-    /* チェックマーク画像がテーマ依存で見えなくならないよう暗色に固定 */
+    /* チェックマーク画像を暗色 tint に固定する。tint は乗算だが、
+       「明るい accent 背景 × 暗い tint」の組み合わせは Light / Dark
+       どちらのテーマのチェック画像でも暗く沈むため両テーマで視認できる */
     -unity-background-image-tint-color: var(--dennoko-surface-0);
 }
 
@@ -253,6 +283,8 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     border-color: var(--dennoko-outline);
 }
 
+/* ⚠ tint は乗算 — Light テーマで矢印が見えない場合は
+   ドロップダウン矢印と同様に background-image へ d_ 系アイコンを明示指定する */
 .dennoko-root .unity-scroller__low-button,
 .dennoko-root .unity-scroller__high-button {
     background-color: var(--dennoko-surface-1);
@@ -263,10 +295,15 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 /* ─── フローティングデザイン用セマンティッククラス ─────────
    以下は Unity ビルトインではなく dennokoworks 独自のクラス。
    UXML 側で class 属性として付与して使う。
-   (.dennoko-root の子孫に置けば変数が継承されるためプレフィックス不要) */
+
+   【規約】セレクタは必ず .dennoko-root を前置する。
+   前置しない (0,1,0) と、上記の汎用リセット
+   .dennoko-root .unity-text-element / .unity-button (0,2,0) に
+   color 宣言が詳細度で負けてしまう。USS に !important は存在しないため、
+   「.dennoko-root 前置 (0,2,0) + リセットより後方に定義 (同数は後勝ち)」で勝たせる。 */
 
 /* セクションカード */
-.dennoko-card {
+.dennoko-root .dennoko-card {
     background-color: var(--dennoko-surface-1);
     border-color: var(--dennoko-outline);
     border-width: 1px;
@@ -276,7 +313,7 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 }
 
 /* カード内ヘッダー */
-.dennoko-card-header {
+.dennoko-root .dennoko-card-header {
     border-bottom-width: 1px;
     border-bottom-color: var(--dennoko-outline);
     padding-bottom: 6px;
@@ -284,35 +321,42 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 }
 
 /* トグル付きヘッダー (Toggle と Reset ボタンを横並びにする) */
-.dennoko-toggle-header {
+.dennoko-root .dennoko-toggle-header {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
 }
 
-/* ウィンドウヘッダー行 */
-.dennoko-header {
+/* トグル付きヘッダー内のボタン (Reset 等) はウィンドウ縮小時にも潰さない */
+.dennoko-root .dennoko-toggle-header > .unity-button {
+    flex-shrink: 0;
+}
+
+/* ウィンドウヘッダー行
+   (固定クロームには flex-shrink: 0 を付け、ウィンドウ縮小時は
+   .dennoko-scroll のスクロール領域だけが縮むようにする) */
+.dennoko-root .dennoko-header {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
+    flex-shrink: 0;
 }
 
 /* ウィンドウタイトル */
-.dennoko-title {
+.dennoko-root .dennoko-title {
     font-size: 14px;
     -unity-font-style: bold;
     color: var(--dennoko-text-primary);
 }
 
 /* ヘッダー左側: タイトル + バージョンをまとめる行（topbar_version_template.md 参照） */
-.dennoko-header-titlegroup {
+.dennoko-root .dennoko-header-titlegroup {
     flex-direction: row;
     align-items: center;
 }
 
-/* バージョン表記 (タイトル横の小さな補足テキスト)
-   ※ .dennoko-root .unity-text-element (詳細度 0,2,0) に負けないよう .dennoko-root を前置する */
+/* バージョン表記 (タイトル横の小さな補足テキスト) */
 .dennoko-root .dennoko-version-label {
     font-size: 10px;
     margin-left: 6px;
@@ -328,22 +372,42 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     color: var(--dennoko-semantic-warning);
 }
 
-/* セクション見出し (大文字英字を想定した小さめの見出し) */
-.dennoko-section-title {
+/* セクション見出し (大文字英字を想定した小さめの見出し)
+   ※ Toggle に付与した場合、文字は子要素 (.unity-toggle__text) にあり、
+   汎用リセット .dennoko-root .unity-text-element が子要素に「直接」マッチして
+   継承色より優先されるため、子孫セレクタも併記して色を届かせる */
+.dennoko-root .dennoko-section-title,
+.dennoko-root .dennoko-section-title .unity-text-element {
     font-size: 10px;
     -unity-font-style: bold;
     color: var(--dennoko-text-tertiary);
 }
 
 /* セパレーター (水平線) */
-.dennoko-separator {
+.dennoko-root .dennoko-separator {
     height: 1px;
     background-color: var(--dennoko-outline);
     margin: 4px 0;
+    flex-shrink: 0;
 }
 
-/* ツールバー行 (カード上端に密着させる想定) */
-.dennoko-toolbar {
+/* メインのスクロール領域 (ScrollView に付与する。window_structure_template.md 参照)
+   ウィンドウ縮小時はこの領域だけが縮む */
+.dennoko-root .dennoko-scroll {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+/* フッター (アクションボタン領域)。.dennoko-card と併用する */
+.dennoko-root .dennoko-footer {
+    flex-shrink: 0;
+}
+
+/* ツールバー行
+   ⚠ カード上端に密着させる場合、カードの padding (12px) と角丸 (8px) を
+   はみ出す。カード側に overflow: hidden を付けるか、ツールバー側に
+   margin: -12px -12px 8px -12px; border-radius: 8px 8px 0 0; を指定する */
+.dennoko-root .dennoko-toolbar {
     flex-direction: row;
     align-items: center;
     background-color: var(--dennoko-surface-2);
@@ -351,7 +415,7 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 }
 
 /* ステータスバー */
-.dennoko-status {
+.dennoko-root .dennoko-status {
     background-color: var(--dennoko-surface-1);
     border-color: var(--dennoko-outline);
     border-width: 1px;
@@ -361,23 +425,26 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     padding: 5px 8px;
     margin: 4px 8px;
     white-space: normal;
+    flex-shrink: 0;
 }
 
-.dennoko-status--success {
+.dennoko-root .dennoko-status--success {
     background-color: var(--dennoko-status-success-bg);
     color: var(--dennoko-semantic-success);
 }
 
-.dennoko-status--error {
+.dennoko-root .dennoko-status--error {
     background-color: var(--dennoko-status-error-bg);
     color: var(--dennoko-status-error-text);
 }
 
 /* Inspector 用ルート:
    InspectorElement 既定の左右余白を打ち消し、Surface0 を全幅に塗る。
+   ルート要素自身に dennoko-root と一緒に付与するため、連結セレクタで書く
+   (子孫セレクタではない点に注意)。
    余白量は Unity バージョンによって異なるため、はみ出し・隙間が出る場合は
    margin の値を調整すること。 */
-.dennoko-inspector-root {
+.dennoko-root.dennoko-inspector-root {
     margin-left: -15px;
     margin-right: -6px;
     padding: 8px 12px;

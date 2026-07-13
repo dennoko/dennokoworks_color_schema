@@ -72,14 +72,15 @@ C# から流し込む。
 色はすべて `var(--dennoko-*)` を経由（ハードコード禁止）。
 
 ```css
-/* ヘッダー左側: タイトル + バージョンをまとめる行 */
-.dennoko-header-titlegroup {
+/* ヘッダー左側: タイトル + バージョンをまとめる行
+   ※ 独自クラスは必ず .dennoko-root を前置する規約 (techniques.md §1)。
+   前置しないと .dennoko-root .unity-text-element (0,2,0) に color で負ける */
+.dennoko-root .dennoko-header-titlegroup {
     flex-direction: row;
     align-items: center;
 }
 
-/* バージョン表記 (タイトル横の小さな補足テキスト)
-   ※ .dennoko-root .unity-text-element (詳細度 0,2,0) に負けないよう .dennoko-root を前置する */
+/* バージョン表記 (タイトル横の小さな補足テキスト) */
 .dennoko-root .dennoko-version-label {
     font-size: 10px;
     margin-left: 6px;

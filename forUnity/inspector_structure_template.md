@@ -135,8 +135,9 @@ namespace YourNamespace   // ← 変更する
 `DennokoTheme.uss` に定義済みの `.dennoko-inspector-root` がネガティブマージンで余白を打ち消す。
 
 ```css
-/* DennokoTheme.uss に定義済み */
-.dennoko-inspector-root {
+/* DennokoTheme.uss に定義済み
+   (ルート要素自身に dennoko-root と一緒に付与するため連結セレクタで書く) */
+.dennoko-root.dennoko-inspector-root {
     margin-left: -15px;
     margin-right: -6px;
     padding: 8px 12px;

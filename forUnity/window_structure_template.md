@@ -65,8 +65,8 @@ C# の定数に設定する。
     </ui:VisualElement>
     <ui:VisualElement class="dennoko-separator" />
 
-    <!-- 設定エリア (スクロール可能) -->
-    <ui:ScrollView style="flex-grow: 1;">
+    <!-- 設定エリア (スクロール可能)。ウィンドウ縮小時はここだけが縮む -->
+    <ui:ScrollView class="dennoko-scroll">
 
         <!-- 常時表示セクション -->
         <ui:VisualElement class="dennoko-card">
@@ -92,8 +92,8 @@ C# の定数に設定する。
 
     </ui:ScrollView>
 
-    <!-- フッター (アクションボタン) -->
-    <ui:VisualElement class="dennoko-card">
+    <!-- フッター (アクションボタン)。dennoko-footer で縮小時の潰れを防ぐ -->
+    <ui:VisualElement class="dennoko-card dennoko-footer">
         <ui:Button name="apply-button" text="Apply &amp; Save" class="dennoko-button-primary" />
         <ui:Button name="reset-all-button" text="Reset All" class="dennoko-button-secondary" />
     </ui:VisualElement>
@@ -224,6 +224,8 @@ namespace YourNamespace   // ← 変更する
         /// <summary>ステータスを表示する。Success / Error は 3 秒後に Ready へ自動復帰。</summary>
         private void SetStatus(string message, StatusType type, long autoResetMs = 3000)
         {
+            if (_statusLabel == null) return; // UXML ロード失敗時・要素名変更時の NRE 防止
+
             _statusLabel.text = message;
             _statusLabel.EnableInClassList("dennoko-status--success", type == StatusType.Success);
             _statusLabel.EnableInClassList("dennoko-status--error",   type == StatusType.Error);

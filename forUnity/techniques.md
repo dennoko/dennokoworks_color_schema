@@ -24,10 +24,24 @@ Unity エディタのビルトインコントロールは、エディタテー�
 変数は子孫にのみ継承されるため、このクラスを忘れるとスタイル全体が無効になる。
 
 補足:
-- USS に `!important` は存在しない。優先させたい場合は詳細度を上げる
+- USS に `!important` は存在しない。**書いてもパースされず宣言が破棄される**
+  （コンソールに警告が出る）。優先させたい場合は詳細度を上げる
   （セレクタを長くする）か、後から `styleSheets.Add` したシートに書く。
 - カラーのハードコーディングは `.dennoko-root` の変数定義部のみに限定し、
   それ以外はすべて `var(--dennoko-*)` を経由する。
+- **独自クラス（`.dennoko-*`）にも同じ理屈が働く。** 汎用リセット
+  `.dennoko-root .unity-text-element` / `.dennoko-root .unity-button` (0,2,0) が
+  あるため、独自クラスを `.dennoko-title` (0,1,0) のように裸で書くと
+  color 宣言が詳細度で負ける。**必ず `.dennoko-root` を前置し (0,2,0)、
+  リセットより後方に定義する**（同数詳細度は後勝ち）。ボタンバリアントのように
+  `:hover` (0,3,0) にも勝つ必要がある場合は
+  `.dennoko-root .unity-button.dennoko-button-active` (0,3,0) と連結して上げる。
+- **「直接マッチ」は「継承」に必ず勝つ**ことにも注意。Toggle のように文字が
+  子要素（`.unity-toggle__text`）にあるコントロールへ色クラスを付けても、
+  汎用リセットが子要素に直接マッチするため、親からの継承色は届かない。
+  `.dennoko-root .dennoko-section-title .unity-text-element` のように
+  子孫セレクタを併記して子要素まで色を届かせる（テーマ USS の
+  `.dennoko-section-title` が実例）。
 
 ---
 
@@ -78,19 +92,33 @@ Foldout の展開矢印は内部的に Toggle のチェックマーク要素
 
 ---
 
-## 4. アイコン画像のテーマ依存を断つ — tint-color
+## 4. アイコン画像のテーマ依存を断つ — tint の限界と background-image 差し替え
 
 ドロップダウンの矢印、チェックマーク、Foldout の三角形などはテクスチャ画像であり、
 Light テーマでは黒い画像が使われて暗背景で見えなくなる。
-`-unity-background-image-tint-color` で色を強制する。
+
+> **⚠ `-unity-background-image-tint-color` は「乗算」である。**
+> 黒い画像にどれだけ明るい tint を掛けても黒のまま（0 × 1 = 0）なので、
+> **tint だけでは Light テーマの黒アイコン問題は解決できない。**
+
+対策は 2 段階:
+
+1. **画像自体をテーマ非依存にする** — `background-image` にダークスキン用
+   （`d_` 接頭辞）のビルトインアイコンを明示指定するか、自前のテクスチャを同梱する。
+2. その上で `-unity-background-image-tint-color` で色味をテーマカラーに揃える。
 
 ```css
 .dennoko-root .unity-base-popup-field__arrow {
+    background-image: resource("d_dropdown"); /* 明るいアイコンに固定 (名前は要実機確認) */
     -unity-background-image-tint-color: var(--dennoko-text-secondary);
 }
 ```
 
-対象になりやすい要素:
+tint だけで成立する例外は**「明るい背景 × 暗い tint」**の組み合わせ。
+例: チェック時のチェックマーク（白い accent 背景 + `--dennoko-surface-0` の暗 tint）は、
+Light / Dark どちらのチェック画像も暗く沈むため両テーマで視認できる。
+
+対象になりやすい要素（**必ず Light テーマの実機で視認性を確認すること**）:
 
 | 要素 | クラス |
 |---|---|
@@ -197,25 +225,27 @@ UI Toolkit のレイアウトエンジンは Flexbox (Yoga)。IMGUI の
 
 ---
 
-## 10. ライトテーマ対応およびコントロール描画のバグ回避テクニック
+## 9. ライトテーマ対応およびコントロール描画のバグ回避テクニック
 
 Unity の Preferences でエディタのテーマを Light に切り替えた際にも、UI が崩れたり文字が読めなくなったりしないように、以下の技術的対策を講じる必要があります。
 
-### 10.1. UI Toolkit コントロールのライトテーマ文字色上書き対策
+> **注:** 9.1 / 9.2 は UI Toolkit の話。9.3 / 9.4 は **IMGUI (`OnGUI()`) を併用する
+> 場合にのみ**必要な対策であり、UI Toolkit のみで構築する場合は不要（§8 参照）。
+
+### 9.1. UI Toolkit コントロールのライトテーマ文字色上書き対策
 UI Toolkit で構築するフローティング UI の場合、ルート要素の背景色がダークテーマ（`--dennoko-surface-1` 等）に固定されていても、`TextField`、`ObjectField`、`DropdownField` などのビルトインコントロールの文字色が Unity 標準の Light テーマによって強制的に黒（`#000000` などの暗い色）に上書きされてしまう。
-これを防ぐため、USS では単に入力親要素クラスだけではなく、コントロール内部のテキスト要素 `.unity-text-element` や `.unity-label` などの子要素に対しても強制的に白文字色を適用するように優先度を確保する。
+これを防ぐため、USS では入力親要素クラスだけでなく、コントロール内部のテキスト要素 `.unity-text-element` などの子要素にも文字色を適用する。優先度は **`!important`（USS には存在しない。§1 参照）ではなく、子孫セレクタの詳細度 (0,3,0) で確保する**。
+なお、内側のテキスト要素に適用してよいのは `color` のみ。背景・枠・パディングまで掛けるとフィールド内部が二重ボックスになりレイアウトが崩れる。
 
 ```css
-/* 例：入力欄と内部文字のカラーを強制固定 */
-.dennoko-root .unity-base-field__input,
+/* 例：入力欄内部の文字色を子孫セレクタの詳細度で固定 (color のみ) */
 .dennoko-root .unity-base-field__input .unity-text-element,
-.dennoko-root .unity-base-field__input .unity-label,
 .dennoko-root .unity-object-field__input .unity-object-field-display__label {
-    color: var(--dennoko-text-primary) !important;
+    color: var(--dennoko-text-primary);
 }
 ```
 
-### 10.2. トグル (Toggle) をボタン型トグルにする設計
+### 9.2. トグル (Toggle) をボタン型トグルにする設計
 標準のチェックマーク付きトグルは、ライトテーマでラベルやチェックマークが崩れたり見えなくなったりしやすい。また、設定カードのツールバー等で視覚的に馴染ませるため、他のアクションボタンと揃えた **トグルボタン**（Button をベースにした ON/OFF 表示）を推奨する。
 
 C# 側でクリックイベントを拾って bool 値をトグルし、状態に応じてテキストと USS クラス（`.dennoko-button-active`）を動的に切り替える。
@@ -238,7 +268,7 @@ void UpdateToggleState(Button button, bool enabled, string textOn, string textOf
 }
 ```
 
-### 10.3. IMGUI コントロール併用時のライトテーマ対策
+### 9.3. IMGUI コントロール併用時のライトテーマ対策
 スライダー（`EditorGUILayout.Slider`）の数値入力欄など、一部で IMGUI (`OnGUI()`) コントロールを併用する場合、`PushEditorTheme` でテキストのフォント色を白に強制していると、ライトテーマ下では入力欄の背景画像が白いため「白い背景に白文字」となり数値が全く読めなくなる。
 これを防ぐには、`PushEditorTheme` において、`EditorStyles.numberField` や `EditorStyles.textField` に対しても、入力欄専用の暗い背景テクスチャを強制適用する。
 
@@ -249,7 +279,7 @@ FixAllStateBackgrounds(EditorStyles.textField, _texSearchField);
 FixAllStateBackgrounds(GUI.skin.textField, _texSearchField);
 ```
 
-### 10.4. IMGUI `ObjectField` の Select ボタン重なりバグの回避
+### 9.4. IMGUI `ObjectField` の Select ボタン重なりバグの回避
 `typeof(Texture2D)` などの画像アセット型を対象とする `ObjectField` を描画する際、高さが 20px などの狭い領域であると、Unity が強制的に正方形のサムネイルプレビュー表示モード（`ObjectFieldThumb`）で描画しようとし、結果としてアセット選択ボタンである「Select」が潰れてテキスト表示領域と重なって崩れてしまうバグが発生する。
 これを回避するため、`EditorGUILayout.ObjectField` のスタイル引数に明示的に `EditorStyles.objectField` を指定することで、サムネイルモードを無効化し、通常の「1行テキスト＋丸ポチボタン」のレイアウトで安全に描画させる。
 
@@ -265,12 +295,16 @@ EditorGUIUtility.labelWidth = originalLabelWidth;
 
 ---
 
-## 11. 動作確認チェックリスト
+## 10. 動作確認チェックリスト
 
 1. **Unity エディタの Preferences でテーマを Light / Dark 両方に切り替えたか？**
    - ラベルが黒くなって読めない、ボタン背景が白く浮く、
      ドロップダウン矢印やチェックマークが消える箇所がないか確認する。
    - 特に `TextField`、`ObjectField`、`DropdownField` の入力文字列やプレビュー選択テキストが、ライトテーマ下でも白文字（または暗い背景にしっかりとコントラストのある色）に維持されているか確認する。
+   - テキスト入力欄の**キャレット（カーソル）と選択範囲の色**が Light テーマでも見えるか確認する
+     （`--unity-cursor-color` / `--unity-selection-color`。§4 と同じく実機確認必須）。
+   - ドロップダウン矢印・スクロールバー矢印など**アイコン画像**が Light テーマで消えていないか確認する。
+     tint は乗算のため黒アイコンは明るくできない — 消える場合は `background-image` の差し替えが必要（§4）。
    - IMGUI の数値入力欄やスライダーが「明るい背景に白文字」になって読めなくなっていないか確認する。
 2. **画像・テクスチャ用の `ObjectField` で「Select」ボタンが崩れて被っていないか？**
    - テクスチャ型を指定する `ObjectField` は Unity の仕様でサムネイル表示になり潰れてしまうため、`EditorGUILayout.ObjectField` の引数に `EditorStyles.objectField` スタイルを明示的に指定し、1行テキスト＋丸ポチモードで正しく描画されているか確認する。
@@ -281,4 +315,8 @@ EditorGUIUtility.labelWidth = originalLabelWidth;
    - 動的リスト以外のレイアウトは UXML へ。色指定は USS 変数へ。
 6. **Inspector の場合、`Bind(serializedObject)` を呼んだか？**
 7. **ウィンドウを極端に狭く / 広くしてレイアウト崩れがないか？**
-   - Flexbox なので IMGUI より崩れにくいが、`flex-shrink` 由来の潰れに注意。
+   - Flexbox なので IMGUI より崩れにくいが、`flex-shrink` 由来の潰れに注意
+     （UI Toolkit のデフォルトは `flex-shrink: 1`）。
+   - ヘッダー・セパレーター・フッター・ステータスバーなどの固定クロームに
+     `flex-shrink: 0` が付いており、縮小時に `.dennoko-scroll`（ScrollView）側だけが
+     縮むことを確認する。
