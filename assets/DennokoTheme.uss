@@ -1,20 +1,3 @@
-# DennokoTheme.uss — コピー用テンプレート
-
-dennokoworks フローティングデザインを Unity UI Toolkit で実現するスタイルシート全文。
-プロジェクトで使用する場合は、以下の手順で配置する。
-
-1. コードブロックを `Editor/UI/DennokoTheme.uss` として保存する
-2. Unity にインポート後、生成された `.meta` ファイルから GUID を控える
-3. C# 側（`window_structure_template.md` / `inspector_structure_template.md`）の
-   `USS_GUID` 定数に控えた GUID を設定する
-
-> **重要:** すべての UI のルート要素に `dennoko-root` クラスを付与すること。
-> USS 変数（カスタムプロパティ）は `.dennoko-root` に定義されており、
-> 子孫要素にのみ継承される。このクラスがないと変数が解決されず全スタイルが無効になる。
-
----
-
-```css
 /* ============================================================
    DennokoTheme.uss
    dennokoworks フローティングデザイン (ダークテーマ固定)
@@ -193,7 +176,8 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
 /* ドロップダウンの矢印アイコン
    ⚠ tint は「乗算」のため、Light テーマの黒い矢印画像は明るくできない。
    ダークスキン用 (d_ 接頭辞) のビルトインアイコンを明示指定して
-   画像自体をテーマ非依存にする。※アイコン名は要実機確認 (techniques.md §4) */
+   画像自体をテーマ非依存にする。※アイコン名は要実機確認
+   (references/troubleshooting.md 参照) */
 .dennoko-root .unity-base-popup-field__arrow {
     background-image: resource("d_dropdown");
     -unity-background-image-tint-color: var(--dennoko-text-secondary);
@@ -350,7 +334,8 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     color: var(--dennoko-text-primary);
 }
 
-/* ヘッダー左側: タイトル + バージョンをまとめる行（topbar_version_template.md 参照） */
+/* ヘッダー左側: タイトル + バージョンをまとめる行
+   (references/version-check-guide.md 参照) */
 .dennoko-root .dennoko-header-titlegroup {
     flex-direction: row;
     align-items: center;
@@ -391,7 +376,7 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     flex-shrink: 0;
 }
 
-/* メインのスクロール領域 (ScrollView に付与する。window_structure_template.md 参照)
+/* メインのスクロール領域 (ScrollView に付与する)
    ウィンドウ縮小時はこの領域だけが縮む */
 .dennoko-root .dennoko-scroll {
     flex-grow: 1;
@@ -449,4 +434,3 @@ dennokoworks フローティングデザインを Unity UI Toolkit で実現す�
     margin-right: -6px;
     padding: 8px 12px;
 }
-```

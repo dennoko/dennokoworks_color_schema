@@ -1,0 +1,45 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+
+    <!-- ヘッダー -->
+    <ui:VisualElement class="dennoko-header">
+        <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
+    </ui:VisualElement>
+    <ui:VisualElement class="dennoko-separator" />
+
+    <!-- 設定エリア (スクロール可能)。ウィンドウ縮小時はここだけが縮む -->
+    <ui:ScrollView class="dennoko-scroll">
+
+        <!-- 常時表示セクション -->
+        <ui:VisualElement class="dennoko-card">
+            <ui:Label text="INPUT" class="dennoko-section-title dennoko-card-header" />
+            <uie:ObjectField label="Source" name="source-field"
+                type="UnityEngine.Texture2D, UnityEngine.CoreModule" />
+        </ui:VisualElement>
+
+        <!-- ON/OFF トグル付きセクション -->
+        <ui:VisualElement class="dennoko-card">
+            <ui:VisualElement class="dennoko-card-header dennoko-toggle-header">
+                <ui:Toggle name="color-correction-toggle" text="COLOR CORRECTION"
+                    value="true" class="dennoko-section-title" />
+                <ui:Button name="color-correction-reset" text="Reset" />
+            </ui:VisualElement>
+            <ui:VisualElement name="color-correction-content">
+                <ui:Slider label="Hue" name="hue-slider"
+                    low-value="-180" high-value="180" show-input-field="true" />
+                <ui:Slider label="Saturation" name="sat-slider"
+                    low-value="0" high-value="2" value="1" show-input-field="true" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+    </ui:ScrollView>
+
+    <!-- フッター (アクションボタン)。dennoko-footer で縮小時の潰れを防ぐ -->
+    <ui:VisualElement class="dennoko-card dennoko-footer">
+        <ui:Button name="apply-button" text="Apply &amp; Save" class="dennoko-button-primary" />
+        <ui:Button name="reset-all-button" text="Reset All" class="dennoko-button-secondary" />
+    </ui:VisualElement>
+
+    <!-- ステータスバー -->
+    <ui:Label name="status-label" text="Ready" class="dennoko-status" />
+
+</ui:UXML>

@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+
+    <ui:VisualElement class="dennoko-card">
+        <ui:Label text="GENERAL" class="dennoko-section-title dennoko-card-header" />
+        <uie:PropertyField binding-path="displayName" />
+        <uie:PropertyField binding-path="intensity" />
+    </ui:VisualElement>
+
+    <ui:VisualElement class="dennoko-card">
+        <ui:Label text="ADVANCED" class="dennoko-section-title dennoko-card-header" />
+        <uie:PropertyField binding-path="advancedSettings" />
+        <ui:Button name="recalculate-button" text="Recalculate" class="dennoko-button-secondary" />
+    </ui:VisualElement>
+
+</ui:UXML>
