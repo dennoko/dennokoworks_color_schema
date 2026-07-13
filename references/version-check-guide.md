@@ -64,6 +64,9 @@ GitHub Public リポジトリ上の `version.json` を取得してローカル�
 >    → `EditorApplication.delayCall` で 1 tick 遅延 + `[CallerFilePath]` 起点の相対探索で保険。
 > 2. 読み込み失敗値をキャッシュすると誤った版数のままになる
 >    → 失敗（null）はキャッシュせず次回アクセスで再試行。
+> 3. **名前空間の重複による衝突（CS0101 等）に注意**
+>    → 同一Unityプロジェクト内の複数ツールで本アップデートチェッカーを導入する場合、コピーした `DennokoVersionChecker.cs` の名前空間がデフォルトの `namespace Dennoko` のままだと、クラス定義の重複によるコンパイルエラーが発生します。これを避けるため、`DennokoVersionChecker.cs` をコピーする際、必ず各ツール固有の名前空間（例：`namespace Dennoko.YourTool` 等）に変更してください。
+
 
 ## Step 4 — EditorWindow 側の配線
 
