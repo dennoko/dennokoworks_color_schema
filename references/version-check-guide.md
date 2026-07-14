@@ -75,12 +75,17 @@ GitHub Public リポジトリ上の `version.json` を取得してローカル�
 ```csharp
 private Label _versionLabel;
 private DennokoVersionChecker.Result _versionResult =
-    new DennokoVersionChecker.Result { State = DennokoVersionChecker.State.Checking, LocalVersion = YourToolVersion.Current };
+    new DennokoVersionChecker.Result { State = DennokoVersionChecker.State.Checking, LocalVersion = "0.0.0" };
+
+// ⚠ UnityException: GUIDToAssetPath_Internal is not allowed to be called from a ScriptableObject constructor に注意
+// フィールドの初期化子で YourToolVersion.Current を直接呼ぶと、インスタンス化のタイミングで例外になります。
+// 初期化子には "0.0.0" などのダミー値を設定し、実際の値は CreateGUI() 内で安全に取得してください。
 
 // CreateGUI() 内で:
 //   _versionLabel = root.Q<Label>("version-label");
 //   ... ラベル配線後 ...
 //   StartVersionCheck();
+
 
 private void StartVersionCheck()
 {
