@@ -121,6 +121,34 @@ void UpdateToggleState(Button button, bool enabled, string textOn, string textOf
 }
 ```
 
+排他的な選択（モード切替、サブツール選択など）では、選択中のボタンにのみクラスが
+付くように毎回まとめて更新する。`EnableInClassList` を使うと ON/OFF を 1 行で書ける。
+
+```csharp
+void RefreshModeUI()
+{
+    _selectBtn.EnableInClassList("dennoko-button-active", !_settings.IsPaintMode);
+    _paintBtn.EnableInClassList("dennoko-button-active",   _settings.IsPaintMode);
+
+    _brushBtn.EnableInClassList("dennoko-button-active", _settings.SubMode == SubMode.Brush);
+    _rectBtn.EnableInClassList("dennoko-button-active",  _settings.SubMode == SubMode.Rect);
+    // ...
+}
+```
+
+### 選択中が見分けられない場合は「青枠」で示す
+
+`.dennoko-button-active` の背景 (Surface2) は通常状態 (Surface1) との明度差が小さく、
+ボタンが複数並ぶとどれが選択中か分かりにくい。DennokoTheme.uss ではアクティブ時の
+`border-color` を `--dennoko-semantic-info` (#64b5f6) の青にしてこれを解決している。
+
+- 選択状態を**背景色や文字色だけ**で表現しない。枠線の色差を必ず併用する
+- 独自にアクティブ用スタイルを書く場合も、青は `--dennoko-semantic-info` を使い、
+  カラーコードを直書きしない
+- `:hover` / `:active` の擬似クラスにも `border-color` を再指定する。汎用の
+  `.dennoko-root .unity-button:active`（accent の白枠）と詳細度が同じ (0,3,0) のため、
+  再指定しないと押下中だけ青枠が白枠に戻ってしまう
+
 ## 7. IMGUI (`OnGUI()`) を併用する場合のみの対策
 
 UI Toolkit のみで構築する場合は不要（references/imgui-migration.md 参照）。

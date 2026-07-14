@@ -93,6 +93,12 @@ UI Toolkit (UXML/USS) コードとして実装する。
 - USS に box-shadow はない。Elevation は**サーフェス間の明度差**で表現する
 - 表面間のコントラストは低め、テキストは高コントラスト（白系）
 - 境界線は `--dennoko-outline` で要素の輪郭を示す
+- **選択中・アクティブ状態は青枠で示す**: モード切替やサブツール（例: Select/Paint、
+  Brush/Rect/Lasso/Eraser、Add/Remove）のように複数の中から 1 つを選ぶボタン群は、
+  背景色の明度差だけでは「どれが選択中か」が判別しづらい。`.dennoko-button-active`
+  を付けると枠線が `--dennoko-semantic-info` (#64b5f6) の青になるので、選択中の
+  ボタンには必ずこのクラスを付ける（`EnableInClassList("dennoko-button-active", isSelected)`）。
+  枠線以外の色（背景・文字色）だけで状態を表現しない。
 
 ## 実装完了時
 
