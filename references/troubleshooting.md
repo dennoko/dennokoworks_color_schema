@@ -18,6 +18,7 @@
 | Inspector の左右に明るい隙間 | InspectorElement の余白 | references/inspector-guide.md §1 |
 | IMGUI 併用部分が Light テーマで読めない | IMGUI はテーマ USS の対象外 | §7 |
 | 文字が一切表示されない（レイアウトは正常） | OS フォントをレガシー Font 経由で適用 | §8 |
+| 横並び行で入力欄がカードの幅を超え、隣のボタンが画面外に消える | `flex-grow` だけで `flex-shrink` を付け忘れている | references/uss-conventions.md §5(頻出ミス) |
 
 ## 1. スタイルが全く適用されない
 
