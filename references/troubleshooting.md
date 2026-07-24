@@ -19,6 +19,7 @@
 | IMGUI 併用部分が Light テーマで読めない | IMGUI はテーマ USS の対象外 | §7 |
 | 文字が一切表示されない（レイアウトは正常） | OS フォントをレガシー Font 経由で適用 | §8 |
 | 操作の途中で突然テキストが崩れ `MissingReferenceException: ... Material ... get_mainTexture` | 動的 FontAsset のアトラス material / texture に hideFlags 未伝播 → UnloadUnusedAssets で破棄 | §9 |
+| 横並び行で入力欄がカードの幅を超え、隣のボタンが画面外に消える | `flex-grow` だけで `flex-shrink` を付け忘れている | references/uss-conventions.md §5(頻出ミス) |
 
 ## 1. スタイルが全く適用されない
 
