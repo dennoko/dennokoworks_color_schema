@@ -33,7 +33,7 @@ namespace YourNamespace   // ← 変更する
                 _uiFontAsset = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset(UI_FONT_FAMILY, "Regular");
                 if (_uiFontAsset != null)
                 {
-                    _uiFontAsset.hideFlags = HideFlags.HideAndDontSave;
+                    MarkFontAssetDontSave(_uiFontAsset);
                 }
             }
             catch
@@ -41,6 +41,34 @@ namespace YourNamespace   // ← 変更する
                 _uiFontAsset = null;
             }
             return _uiFontAsset;
+        }
+
+        // 動的生成した FontAsset とその内部オブジェクト（アトラス用 material / atlasTextures）
+        // すべてに HideAndDontSave を伝播させる。
+        // ⚠ FontAsset 本体にだけ hideFlags を付けても不十分。CreateFontAsset が実行時に生成する
+        //   フォントアトラスの material / Texture2D は FontAsset とは別の UnityEngine.Object で
+        //   hideFlags は自動伝播しない。放置すると「未参照の一時アセット」と見なされ、
+        //   Resources.UnloadUnusedAssets()（AssetDatabase.Refresh、プレイモード遷移、
+        //   シーン保存などで暗黙的に呼ばれる）で破棄される。すると FontAsset は破棄済み material を
+        //   参照し続け、次のテキスト描画で
+        //   「MissingReferenceException: ... Material ... UIRStylePainter.DrawTextInfo /
+        //    Material.get_mainTexture」が発生し UI のテキストが崩れる。
+        private static void MarkFontAssetDontSave(UnityEngine.TextCore.Text.FontAsset fontAsset)
+        {
+            fontAsset.hideFlags = HideFlags.HideAndDontSave;
+
+            if (fontAsset.material != null)
+                fontAsset.material.hideFlags = HideFlags.HideAndDontSave;
+
+            var atlasTextures = fontAsset.atlasTextures;
+            if (atlasTextures != null)
+            {
+                foreach (var tex in atlasTextures)
+                {
+                    if (tex != null)
+                        tex.hideFlags = HideFlags.HideAndDontSave;
+                }
+            }
         }
 
         public override VisualElement CreateInspectorGUI()

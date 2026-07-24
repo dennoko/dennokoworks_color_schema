@@ -54,6 +54,10 @@ UI Toolkit (UXML/USS) コードとして実装する。
    ⚠ レガシー Font（`Font.CreateDynamicFontFromOSFont`）+ `FontDefinition.FromFont()`
    は UI Toolkit ではグリフ生成に失敗し**文字が一切表示されなくなる**ため使用禁止
    （`references/troubleshooting.md` §8）。
+   ⚠ 生成した FontAsset は本体だけでなく**アトラスの `material` と `atlasTextures` にも
+   `HideAndDontSave` を伝播**させる（テンプレートの `MarkFontAssetDontSave()`）。本体だけだと
+   `Resources.UnloadUnusedAssets()` でアトラスが破棄され、操作の途中でテキストが崩れて
+   `MissingReferenceException`（`Material.get_mainTexture`）が出る（§9）。
 
 ## カラーパレット（クイックリファレンス）
 

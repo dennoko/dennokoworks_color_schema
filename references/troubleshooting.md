@@ -18,6 +18,7 @@
 | Inspector の左右に明るい隙間 | InspectorElement の余白 | references/inspector-guide.md §1 |
 | IMGUI 併用部分が Light テーマで読めない | IMGUI はテーマ USS の対象外 | §7 |
 | 文字が一切表示されない（レイアウトは正常） | OS フォントをレガシー Font 経由で適用 | §8 |
+| 操作の途中で突然テキストが崩れ `MissingReferenceException: ... Material ... get_mainTexture` | 動的 FontAsset のアトラス material / texture に hideFlags 未伝播 → UnloadUnusedAssets で破棄 | §9 |
 
 ## 1. スタイルが全く適用されない
 
@@ -188,14 +189,57 @@ UI Toolkit のテキストは TextCore（SDF）で描画されるが、OS 動的
 var fontAsset = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset("Meiryo", "Regular");
 if (fontAsset != null)
 {
-    fontAsset.hideFlags = HideFlags.HideAndDontSave;
+    // 本体だけでなくアトラス material / atlasTextures にも hideFlags を伝播（§9 参照）
+    MarkFontAssetDontSave(fontAsset);
     root.style.unityFontDefinition = FontDefinition.FromSDFFont(fontAsset);
 }
 ```
 
 - フォントが見つからない場合は `Unable to find a font file...` というログと共に
   null が返るだけなので、そのままエディタ標準フォントにフォールバックする
-- 生成した FontAsset は static にキャッシュし `HideAndDontSave` を付ける
+- 生成した FontAsset は static にキャッシュし、`MarkFontAssetDontSave()` で
+  本体・アトラス material・atlasTextures すべてに `HideAndDontSave` を付ける（**§9 必読**）
+
+## 9. 操作の途中でテキストが崩れる — 動的 FontAsset のアトラスが破棄される
+
+`CreateFontAsset()` で作った SDF FontAsset に対し、**FontAsset 本体にだけ**
+`hideFlags = HideAndDontSave` を付けると、しばらく操作した後に突然テキストが崩れ、
+コンソールに次の例外が出ることがある（実際に発生した事故）:
+
+```
+MissingReferenceException: The object of type 'Material' has been destroyed
+  but you are still trying to access it.
+UnityEngine.Material.get_mainTexture ()
+... UIRStylePainter.DrawTextInfo ...
+```
+
+原因は、`CreateFontAsset()` が実行時に生成する**フォントアトラスの `material` と
+`atlasTextures`（Texture2D）が FontAsset 本体とは別の `UnityEngine.Object`** であり、
+`hideFlags` が自動伝播しないこと。これらを放置すると「どのアセットからも参照されない
+一時オブジェクト」と見なされ、`Resources.UnloadUnusedAssets()`（PNG 書き出し後の
+`AssetDatabase.Refresh`、プレイモード遷移、シーン保存などで暗黙的に呼ばれる）で破棄される。
+FontAsset は破棄済み material を参照し続けるため、次のテキスト描画で上記例外になる。
+
+対処: 本体・`material`・`atlasTextures` すべてに `HideAndDontSave` を伝播させる
+（テンプレート C# の `MarkFontAssetDontSave()` に実装済み）:
+
+```csharp
+private static void MarkFontAssetDontSave(UnityEngine.TextCore.Text.FontAsset fontAsset)
+{
+    fontAsset.hideFlags = HideFlags.HideAndDontSave;
+
+    if (fontAsset.material != null)
+        fontAsset.material.hideFlags = HideFlags.HideAndDontSave;
+
+    var atlasTextures = fontAsset.atlasTextures;
+    if (atlasTextures != null)
+    {
+        foreach (var tex in atlasTextures)
+            if (tex != null)
+                tex.hideFlags = HideFlags.HideAndDontSave;
+    }
+}
+```
 
 ## 動作確認チェックリスト（実装完了時に必ず実施）
 
@@ -217,3 +261,6 @@ if (fontAsset != null)
 8. **テクスチャ型 `ObjectField` の Select ボタンが崩れて被っていないか？**（IMGUI 併用時。§7）
 9. **文字がメイリオで表示されているか？**（標準フォント。SKILL.md 絶対規則 6）
    - 文字が全部消えている場合はレガシー Font 経由で適用している（§8）
+   - PNG 書き出しやプレイモード遷移など `UnloadUnusedAssets` を挟む操作の後にテキストが崩れ
+     `MissingReferenceException`（`Material.get_mainTexture`）が出る場合は、FontAsset の
+     アトラス material / texture に hideFlags を伝播していない（§9・`MarkFontAssetDontSave()`）
