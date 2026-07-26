@@ -34,11 +34,16 @@ Editor/
 ├─ UI/
 │   ├─ DennokoTheme.uss        ← assets/DennokoTheme.uss をコピー
 │   └─ YourEditorWindow.uxml   ← assets/EditorWindow/ からコピー
+├─ DennokoUIFont.cs            ← assets/Shared/ からコピー（フォント管理・共通）
 └─ YourEditorWindow.cs         ← assets/EditorWindow/ からコピー
 ```
 
-1. 上記 3 ファイルをコピーして配置する
+1. 上記 4 ファイルをコピーして配置する
 2. C# の変更箇所: `namespace` / クラス名 / `[MenuItem("Tools/Your Tool Name")]`
+   - `DennokoUIFont.cs` も `namespace` を合わせる。Inspector も作る場合、このファイルは
+     **プロジェクト内に 1 つだけ**置いて共有する（重複配置はコンパイルエラー）
+   - `DennokoUIFont.WarmupJapanese` にツールの UI で使う日本語を書き足す
+     （実行中のアトラス追加＝文字化けの原因を減らす。`references/troubleshooting.md` §10）
 3. Unity インポート後、UXML / USS の `.meta` から GUID を控えて
    C# の `UXML_GUID` / `USS_GUID` 定数に設定する（プレースホルダーのままにしない）
    - GUID の調べ方: `.meta` の `guid:` 行、または Project ビュー右クリック → Copy GUID

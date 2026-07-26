@@ -19,6 +19,9 @@
 | IMGUI 併用部分が Light テーマで読めない | IMGUI はテーマ USS の対象外 | §7 |
 | 文字が一切表示されない（レイアウトは正常） | OS フォントをレガシー Font 経由で適用 | §8 |
 | 操作の途中で突然テキストが崩れ `MissingReferenceException: ... Material ... get_mainTexture` | 動的 FontAsset のアトラス material / texture に hideFlags 未伝播 → UnloadUnusedAssets で破棄 | §9 |
+| しばらく使うと**一部の文字だけ**□ / 空白になる | 実行中に増えた追加アトラスが未保護のまま破棄された | §10-① |
+| 一度テキストが崩れると再起動まで直らない | 破棄済み FontAsset をキャッシュから返し続けている | §10-② |
+| コンパイルのたびにメモリが増える / 崩れやすくなる | ドメインリロードで FontAsset とアトラスが leak している | §10-③ |
 | 横並び行で入力欄がカードの幅を超え、隣のボタンが画面外に消える | `flex-grow` だけで `flex-shrink` を付け忘れている | references/uss-conventions.md §5(頻出ミス) |
 
 ## 1. スタイルが全く適用されない
@@ -183,23 +186,24 @@ UI Toolkit のテキストは TextCore（SDF）で描画されるが、OS 動的
 変換できずグリフ生成が静かに失敗する。結果、レイアウトやスタイルは正常なまま
 **テキストだけがすべて消える**（実際に発生した事故。エラーも出ない）。
 
-正しい実装（テンプレート C# の `GetUIFontAsset()` に定義済み）:
+正しい実装は `assets/Shared/DennokoUIFont.cs` に集約済み。呼び出し側は 1 行だけ:
+
+```csharp
+root.AddToClassList("dennoko-root");
+DennokoUIFont.Apply(root);   // 生成・アトラス保護・再適用をすべて内包
+```
+
+内部で使っている API は次のもの（**自前で書き直さないこと**。§9・§10 の対策が抜ける）:
 
 ```csharp
 // OS フォントから直接 SDF FontAsset を生成する（Unity 2022.3 で public）
 var fontAsset = UnityEngine.TextCore.Text.FontAsset.CreateFontAsset("Meiryo", "Regular");
-if (fontAsset != null)
-{
-    // 本体だけでなくアトラス material / atlasTextures にも hideFlags を伝播（§9 参照）
-    MarkFontAssetDontSave(fontAsset);
-    root.style.unityFontDefinition = FontDefinition.FromSDFFont(fontAsset);
-}
 ```
 
 - フォントが見つからない場合は `Unable to find a font file...` というログと共に
   null が返るだけなので、そのままエディタ標準フォントにフォールバックする
-- 生成した FontAsset は static にキャッシュし、`MarkFontAssetDontSave()` で
-  本体・アトラス material・atlasTextures すべてに `HideAndDontSave` を付ける（**§9 必読**）
+- `DennokoUIFont` は取得失敗時に `unityFontDefinition` へ
+  `StyleKeyword.Null` を入れ、破棄済みオブジェクトへのダングリング参照を残さない
 
 ## 9. 操作の途中でテキストが崩れる — 動的 FontAsset のアトラスが破棄される
 
@@ -222,17 +226,17 @@ UnityEngine.Material.get_mainTexture ()
 FontAsset は破棄済み material を参照し続けるため、次のテキスト描画で上記例外になる。
 
 対処: 本体・`material`・`atlasTextures` すべてに `HideAndDontSave` を伝播させる
-（テンプレート C# の `MarkFontAssetDontSave()` に実装済み）:
+（`DennokoUIFont` の `Protect()` に実装済み）:
 
 ```csharp
-private static void MarkFontAssetDontSave(UnityEngine.TextCore.Text.FontAsset fontAsset)
+private static void Protect(FontAsset fa)
 {
-    fontAsset.hideFlags = HideFlags.HideAndDontSave;
+    fa.hideFlags = HideFlags.HideAndDontSave;
 
-    if (fontAsset.material != null)
-        fontAsset.material.hideFlags = HideFlags.HideAndDontSave;
+    if (fa.material != null)
+        fa.material.hideFlags = HideFlags.HideAndDontSave;
 
-    var atlasTextures = fontAsset.atlasTextures;
+    var atlasTextures = fa.atlasTextures;
     if (atlasTextures != null)
     {
         foreach (var tex in atlasTextures)
@@ -241,6 +245,101 @@ private static void MarkFontAssetDontSave(UnityEngine.TextCore.Text.FontAsset fo
     }
 }
 ```
+
+> ⚠ **これを「生成直後に 1 回」だけ呼ぶのでは不十分。** アトラスは実行中に増えるため、
+> 定期的に呼び直す必要がある（**§10 必読**）。
+
+## 10. フォントキャッシュ消失と自己修復 — §9 対策だけでは再発する
+
+§9 の `hideFlags` 伝播を入れても、次の 3 経路でキャッシュが失われ UI が崩れる。
+`assets/Shared/DennokoUIFont.cs` はこの 3 つすべてに対処済みなので、
+**フォント処理を自前で書かず必ずこのファイルを配置して使うこと。**
+
+### ① 実行中に増えたアトラステクスチャが未保護のまま破棄される（最頻出）
+
+`CreateFontAsset("Meiryo", "Regular")` が作るアトラスは既定設定では 1 枚に収まる
+グリフ数が限られ、日本語 UI ではすぐ埋まる。新しい文字が出るたびに TextCore が**追加の
+`Texture2D` を実行時に生成する**（`isMultiAtlasTexturesEnabled` が既定で true）。
+この 2 枚目以降は §9 の伝播処理より**後**に生まれるので `hideFlags` が既定のまま残り、
+次の `UnloadUnusedAssets()` で破棄される。
+
+症状は §9 の例外に加えて、**先に焼かれた文字は出るのに後から出た文字だけ □ / 空白になる**。
+オブジェクト名やエラーメッセージなど動的な文字列で顕在化しやすい。
+
+対策は 2 つ併用する:
+
+- **`Protect()` を定期的に呼び直す**（冪等）。`DennokoUIFont` はウィンドウが開いている間だけ
+  `EditorApplication.update` で 2 秒ごとに回し、増えたアトラスを拾う
+- **ウォームアップ**: 生成時に `TryAddCharacters()` で UI に出る文字をまとめて焼き、
+  そもそもアトラスが増える機会を減らす。`DennokoUIFont.WarmupJapanese` に
+  **ツール固有の日本語を書き足すこと**
+
+```csharp
+try { fa.TryAddCharacters(WarmupAscii + WarmupJapanese, out _); }
+catch { /* Unity バージョン差があるため必ず握りつぶす */ }
+```
+
+> `CreateFontAsset(family, style, pointSize)` の第 3 引数（サンプリングサイズ。省略時は
+> 大きめの既定値）を 48〜60 程度へ下げると 1 枚に入るグリフ数が増え、アトラス追加自体が
+> 起きにくくなる。UI サイズなら SDF の品質劣化はほぼ見えないはずだが、
+> **採用前に実機で確認すること**（このオーバーロードが public なのは Unity 2022.3 で確認済み）。
+
+### ② 破棄済みキャッシュを返し続ける（崩れたまま復帰しない）
+
+```csharp
+// ❌ 禁止パターン
+if (_uiFontSearched) return _uiFontAsset;   // 破棄済みでもそのまま返る
+```
+
+この「一度探したら二度と作り直さない」ラッチだと、①で FontAsset やアトラスが死んだあと
+**再生成の経路が存在せず、Unity を再起動するまで直らない**。
+
+正しくは毎回生存確認する。fake-null 対策として本体だけでなくアトラスまで見る:
+
+```csharp
+private static bool IsAlive(FontAsset fa)
+{
+    if (fa == null) return false;              // Unity の == が破棄済みも false にする
+    if (fa.material == null) return false;
+    var texs = fa.atlasTextures;
+    return texs != null && texs.Length > 0 && texs[0] != null;
+}
+```
+
+再試行を止めてよいのは「フォント未搭載環境で `CreateFontAsset` が null を返した」場合のみ
+（`_unavailable` フラグ）。これを区別しないと Mac / Linux で毎ティック生成を試みることになる。
+
+さらに、**すでに開いているウィンドウの `unityFontDefinition` は死んだ FontAsset を
+指したまま**なので、作り直したら再適用まで行う必要がある。`DennokoUIFont` は適用先ルートを
+リストで保持し、`Revalidate()` で全ルートへ貼り直す。あわせて `AttachToPanelEvent` でも
+再適用し、再ドック・レイアウト変更・リロード後の復帰を担保する。
+
+再点検のフックは以下（いずれも `UnloadUnusedAssets` を暗黙的に挟みうる）:
+
+```csharp
+AssemblyReloadEvents.afterAssemblyReload += Revalidate;
+EditorApplication.playModeStateChanged   += _ => Revalidate();
+EditorApplication.projectChanged         += Revalidate;   // AssetDatabase.Refresh 後
+```
+
+### ③ ドメインリロードでの leak
+
+`HideAndDontSave` のオブジェクトはドメインリロードを生き延びるが、`static` フィールドの
+参照は消える。そのままだとコンパイルのたびに FontAsset とアトラスが増え続ける。
+生成時に固定名を付け、次回はそれを拾って再利用する:
+
+```csharp
+private const string AssetName = "Dennoko_UIFont_Meiryo";
+
+private static FontAsset FindExisting()
+{
+    foreach (var fa in Resources.FindObjectsOfTypeAll<FontAsset>())
+        if (fa != null && fa.name == AssetName && IsAlive(fa)) { Protect(fa); return fa; }
+    return null;
+}
+```
+
+同じプロジェクトに dennokoworks 製ツールが複数入っていても 1 つの FontAsset を共有できる。
 
 ## 動作確認チェックリスト（実装完了時に必ず実施）
 
@@ -261,7 +360,15 @@ private static void MarkFontAssetDontSave(UnityEngine.TextCore.Text.FontAsset fo
      縮小時に `.dennoko-scroll`（ScrollView）側だけが縮むか
 8. **テクスチャ型 `ObjectField` の Select ボタンが崩れて被っていないか？**（IMGUI 併用時。§7）
 9. **文字がメイリオで表示されているか？**（標準フォント。SKILL.md 絶対規則 6）
+   - `assets/Shared/DennokoUIFont.cs` を配置し、ルートに `DennokoUIFont.Apply(root)` を
+     呼んでいるか（FontAsset をウィンドウ側で自前生成していないか）
    - 文字が全部消えている場合はレガシー Font 経由で適用している（§8）
    - PNG 書き出しやプレイモード遷移など `UnloadUnusedAssets` を挟む操作の後にテキストが崩れ
      `MissingReferenceException`（`Material.get_mainTexture`）が出る場合は、FontAsset の
-     アトラス material / texture に hideFlags を伝播していない（§9・`MarkFontAssetDontSave()`）
+     アトラス material / texture に hideFlags を伝播していない（§9・`Protect()`）
+10. **フォントキャッシュ消失の耐性を実機で確認したか？**（§10）
+    - 日本語を多く含む画面を一通り開き、**後から出た文字だけ □ / 空白**にならないか
+      （オブジェクト名・エラーメッセージなど動的な文字列で確認する）
+    - ウィンドウを開いたままスクリプトを再コンパイル → テキストが正常に戻るか
+    - ウィンドウを開いたままプレイモードを往復 → テキストが正常に戻るか
+    - `DennokoUIFont.WarmupJapanese` にツール固有の日本語を書き足したか

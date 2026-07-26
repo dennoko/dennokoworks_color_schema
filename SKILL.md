@@ -16,8 +16,8 @@ UI Toolkit (UXML/USS) コードとして実装する。
 
 | やりたいこと | コピーするファイル | 読むガイド |
 |---|---|---|
-| EditorWindow を作る | `assets/DennokoTheme.uss` + `assets/EditorWindow/`（UXML/C#） | `references/window-guide.md` |
-| Inspector (CustomEditor) を作る | `assets/DennokoTheme.uss` + `assets/Inspector/`（UXML/C#） | `references/inspector-guide.md` |
+| EditorWindow を作る | `assets/DennokoTheme.uss` + `assets/EditorWindow/`（UXML/C#） + `assets/Shared/DennokoUIFont.cs` | `references/window-guide.md` |
+| Inspector (CustomEditor) を作る | `assets/DennokoTheme.uss` + `assets/Inspector/`（UXML/C#） + `assets/Shared/DennokoUIFont.cs` | `references/inspector-guide.md` |
 | テーマ USS だけ欲しい | `assets/DennokoTheme.uss` | —（下の絶対規則だけ守る） |
 | 独自の USS クラス/スタイルを追加する | — | `references/uss-conventions.md`（**必読**） |
 | バージョン表記 + 更新チェックを付ける | `assets/VersionCheck/`（C# × 2） | `references/version-check-guide.md` |
@@ -45,19 +45,21 @@ UI Toolkit (UXML/USS) コードとして実装する。
 5. **UXML / USS は GUID でロードする。**
    テンプレートの `YOUR_*_GUID_HERE` プレースホルダーは、Unity インポート後に
    `.meta` の GUID（または右クリック → Copy GUID）へ必ず置き換える。
-6. **標準フォントは OS のメイリオを SDF FontAsset として動的参照する。**
-   フォントアセットは同梱しない。
-   `UnityEngine.TextCore.Text.FontAsset.CreateFontAsset("Meiryo", "Regular")` で生成し、
-   `FontDefinition.FromSDFFont()` でルート要素の `unityFontDefinition` に適用する
-   （テンプレート C# の `GetUIFontAsset()` に実装済み）。
+6. **標準フォントは `assets/Shared/DennokoUIFont.cs` を配置して `DennokoUIFont.Apply(root)` だけ呼ぶ。**
+   OS のメイリオを SDF FontAsset として動的参照する（フォントアセットは同梱しない）。
+   ルート要素 1 つにつき 1 回、`CreateGUI()` / `CreateInspectorGUI()` で呼ぶだけでよい。
    未搭載環境ではエディタ標準フォントに自動フォールバックする。
-   ⚠ レガシー Font（`Font.CreateDynamicFontFromOSFont`）+ `FontDefinition.FromFont()`
-   は UI Toolkit ではグリフ生成に失敗し**文字が一切表示されなくなる**ため使用禁止
-   （`references/troubleshooting.md` §8）。
-   ⚠ 生成した FontAsset は本体だけでなく**アトラスの `material` と `atlasTextures` にも
-   `HideAndDontSave` を伝播**させる（テンプレートの `MarkFontAssetDontSave()`）。本体だけだと
-   `Resources.UnloadUnusedAssets()` でアトラスが破棄され、操作の途中でテキストが崩れて
-   `MissingReferenceException`（`Material.get_mainTexture`）が出る（§9）。
+   **EditorWindow / Inspector 側で FontAsset を直接生成・キャッシュしない。**
+   Window と Inspector を両方作る場合も `DennokoUIFont.cs` は 1 つだけ配置する。
+   このクラスが吸収している事故（すべて実際に発生した。詳細は
+   `references/troubleshooting.md` §8〜§10）:
+   - レガシー Font（`Font.CreateDynamicFontFromOSFont`）+ `FontDefinition.FromFont()` は
+     グリフ生成に失敗し**文字が一切表示されなくなる**（§8）
+   - アトラスの `material` / `atlasTextures` に `HideAndDontSave` を伝播しないと
+     `Resources.UnloadUnusedAssets()` で破棄され `MissingReferenceException`
+     （`Material.get_mainTexture`）でテキストが崩れる（§9）
+   - **実行中に増える追加アトラス・破棄済みキャッシュの返却・ドメインリロードでの leak**
+     により、しばらく使うと文字が欠ける／崩れたまま復帰しない（§10）
 
 ## カラーパレット（クイックリファレンス）
 
