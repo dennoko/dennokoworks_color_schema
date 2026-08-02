@@ -78,6 +78,22 @@ C# で `BindToggleSection()`（テンプレートに定義済み）を 1 行呼�
 - `toggle = true` → コンテンツ有効（通常表示）
 - `toggle = false` → `SetEnabled(false)` により Unity が自動でグレーアウト・操作不可
 
+**トグル（チェックボックス）は囲まない** — チェックボックスとそのラベルは
+「入力欄」ではなくテキスト行として見せる。トグル自体にも、トグルで開閉・
+有効化する項目のまとまりにも枠や背景の囲みを付けない。階層を示したいときは
+インデント（`margin-left`）を使う。
+
+```xml
+<ui:Toggle name="overwrite-toggle" text="上書き保存を有効にする" />
+<!-- トグルで制御される項目。カードや枠では囲まず、インデントだけで従属を示す -->
+<ui:VisualElement name="overwrite-group" style="margin-left: 16px;">
+    <!-- ... -->
+</ui:VisualElement>
+```
+
+囲みが出てしまう場合は references/troubleshooting.md §4-② を見る
+（テーマ USS の §④で打ち消し済み。テーマを改変したときに再発しやすい）。
+
 **セパレーター**
 
 ```xml

@@ -9,7 +9,8 @@
 | スタイルが全く効かない | `dennoko-root` 付け忘れ / GUID がプレースホルダーのまま / `styleSheets.Add` 忘れ | §1 |
 | Light テーマで文字が黒くなる | オーバーライド外の要素 / `!important` の使用（無効） | §2 |
 | Light テーマでアイコンが消える | tint は乗算で黒画像を明るくできない | §3 |
-| Foldout の矢印が白い箱になる | Toggle のチェックボックス装飾が波及 | §4 |
+| Foldout の矢印が白い箱になる | Toggle のチェックボックス装飾が波及 | §4-① |
+| チェックボックスとラベルが入力欄のような箱で囲まれる | Toggle の `__input` に入力フィールド装飾が乗る | §4-② |
 | 独自クラスの文字色が効かない | 詳細度で汎用リセットに負けている | references/uss-conventions.md §2 |
 | 入力欄の内部が二重枠になる | 内側テキスト要素にボックススタイルを適用 | references/uss-conventions.md §2 |
 | ウィンドウ縮小でヘッダー等が潰れる | `flex-shrink: 0` の欠落 | references/uss-conventions.md §5 |
@@ -79,7 +80,9 @@ tint だけで成立する例外は「明るい背景 × 暗い tint」の組み
 `.unity-toggle__checkmark` / ObjectField ピッカー `.unity-object-field__selector` /
 スクロールバー矢印 `.unity-scroller__low-button` `__high-button`
 
-## 4. Foldout の矢印が「白い箱」になる
+## 4. Toggle 由来の「箱」の崩れ
+
+### ① Foldout の矢印が「白い箱」になる
 
 Foldout の展開矢印は内部的に Toggle のチェックマーク要素
 (`.unity-toggle__checkmark`) を流用しているため、チェックボックスの
@@ -98,6 +101,42 @@ Foldout の展開矢印は内部的に Toggle のチェックマーク要素
 
 `:checked` / `:hover` も併記するのは、疑似クラス付きセレクタのほうが詳細度が高く、
 素の打ち消しだけでは展開時・ホバー時に負けるため。
+
+### ② チェックボックスとラベルが入力欄のような箱で囲まれる
+
+**トグルは「入力欄」ではなくテキスト行として見せる。周囲に囲みを付けない。**
+
+Toggle の入力コンテナ `.unity-toggle__input` は `.unity-base-field__input` でも
+あるため、§③の入力フィールド装飾（背景・枠線・角丸・パディング）がそのまま乗り、
+チェックボックス + ラベル全体が箱で囲まれてしまう。テーマ USS の §④で打ち消し済み。
+
+```css
+.dennoko-root .unity-toggle .unity-base-field__input,
+.dennoko-root .unity-toggle:hover .unity-base-field__input,
+.dennoko-root .unity-toggle:focus .unity-base-field__input,
+.dennoko-root .unity-toggle .unity-base-field__input:focus {
+    background-color: transparent;
+    border-color: transparent;
+    border-width: 0;
+    padding: 0;
+}
+```
+
+`:hover` / `:focus` を併記するのは①と同じ理由。素の打ち消し (0,3,0) は
+`.dennoko-root .unity-base-field:hover .unity-base-field__input` (0,4,0) に負けるため、
+同じ詳細度のセレクタを §③ より後ろに置いて上書きする。
+
+> **⚠ 併発しやすい派生バグ:** `Toggle.text` のラベルは `.unity-base-field__input` の
+> **内側**に `Label`（= `.unity-label` かつ `.unity-text-element`）として生成される。
+> そのため §③で内側のテキスト要素にボックススタイルを足すと、
+> **ラベル文字そのものが箱で囲まれる。** §③の内側セレクタは `color` のみに留めること
+> （references/uss-conventions.md §2 の「二重枠」と同じ原則）。
+> このときコンテナ側だけをリセットしても直らない — 箱の実体は内側の
+> `.unity-toggle__text` にある。テーマ USS §④に打ち消しを入れてある。
+
+なお `Toggle(label)` コンストラクタで作った場合、文字は `__input` の外側
+（`.unity-base-field__label`）に出るためこの問題は起きない。囲みが出るのは
+`Toggle.text` / UXML の `text=` を使ったときだけ。
 
 ## 5. ドロップダウンのポップアップメニューはスタイル不可（既知の限界）
 
@@ -372,3 +411,8 @@ private static FontAsset FindExisting()
     - ウィンドウを開いたままスクリプトを再コンパイル → テキストが正常に戻るか
     - ウィンドウを開いたままプレイモードを往復 → テキストが正常に戻るか
     - `DennokoUIFont.WarmupJapanese` にツール固有の日本語を書き足したか
+11. **チェックボックス（Toggle）が囲まれていないか？**（§4-②）
+    - 素の状態でチェックボックス + ラベルの周りに枠・背景が出ていないか
+    - **マウスを乗せた状態**でも箱が出ないか（ホバー時だけ復活する崩れがある）
+    - トグルで制御する項目のまとまりをカードや枠で囲っていないか
+      （階層はインデントで示す）

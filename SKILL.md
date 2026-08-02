@@ -105,6 +105,10 @@ UI Toolkit (UXML/USS) コードとして実装する。
   を付けると枠線が `--dennoko-semantic-info` (#64b5f6) の青になるので、選択中の
   ボタンには必ずこのクラスを付ける（`EnableInClassList("dennoko-button-active", isSelected)`）。
   枠線以外の色（背景・文字色）だけで状態を表現しない。
+- **チェックボックス（Toggle）は囲まない**: チェックボックスとそのラベルは「入力欄」
+  ではなくテキスト行として見せる。トグル自体にも、トグルで有効化・開閉する項目の
+  まとまりにも枠や背景の囲みを付けない。階層はインデント（`margin-left`）で示す。
+  囲みが出るのはテーマ USS の打ち消し漏れが原因（`references/troubleshooting.md` §4-②）。
 
 ## 実装完了時
 
