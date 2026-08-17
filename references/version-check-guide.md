@@ -21,6 +21,8 @@ GitHub Public リポジトリ上の `version.json` を取得してローカル�
 - チェック先の owner / repo はハードコードせず、各プロジェクトのリモートリポジトリ
   （`git remote get-url origin`）に合わせて `YourToolVersion` の定数に設定する。
   branch は失敗時に `"main"` へ自動フォールバックする。
+- **取得頻度は `CheckIntervalHours`（既定 6 時間）で絞る**。ドメインリロードのたびに
+  リクエストを飛ばすと GitHub のレート制限に掛かるため（→ [取得頻度とレート制限](#取得頻度とレート制限)）。
 
 ## Step 1 — リモートに `version.json` を置く
 
@@ -56,8 +58,10 @@ GitHub Public リポジトリ上の `version.json` を取得してローカル�
    - `namespace` / クラス名
    - `VersionJsonGuid`（ローカル `version.json` の GUID）
    - `RepoOwner` / `RepoName` / `RepoBranch`
-   - SessionState キーの接頭辞（`YourTool_...`）
-   - `OnVersionChecked` 内の `YourToolWindow` を自分のウィンドウクラス名に
+   - SessionState / EditorPrefs キーの接頭辞（`YourTool_...`）
+     — **EditorPrefs キーは Unity エディタ全体で共有される**ので、他ツールと衝突しない
+     接頭辞にする（衝突すると別ツールの最新版が表示される）
+   - `RefreshOpenWindows()` 内の `YourToolWindow` を自分のウィンドウクラス名に
 
 > **他プロジェクトへのインポートでハマりやすい 2 点（テンプレートで対策済み）**
 > 1. `[InitializeOnLoad]` はドメインリロード中に走り `GUIDToAssetPath` が空を返し得る
@@ -91,7 +95,8 @@ private void StartVersionCheck()
 {
     LoadVersionResultFromSessionState();
     // 取得の要否は StartCheckBackgroundTask 内で判定する（成功済みなら何もしない／
-    // 前回エラーなら再試行）。ウィンドウを開き直すたびに一時的な失敗から自己回復できる。
+    // 前回エラーなら再試行、ただし前回リクエストから CheckIntervalHours 以内なら
+    // 通信せず EditorPrefs のキャッシュを表示に使う）。呼び出し側は毎回呼んでよい。
     YourToolVersion.StartCheckBackgroundTask();
 }
 
@@ -202,14 +207,55 @@ if (reloadButton != null)
 > Refresh アイコンを使う場合は `reloadButton.style.backgroundImage` に
 > `EditorGUIUtility.IconContent("d_Refresh").image` を設定する。
 
+## 取得頻度とレート制限
+
+**GitHub は同一 IP からの高頻度アクセスを 403 で弾く。** チェッカーを素朴に書くと
+これを踏むので、テンプレートでは次の 3 点で対策している。
+
+| 対策 | 理由 |
+|---|---|
+| `raw.githubusercontent.com` を使う（`api.github.com` を使わない） | 未認証の `api.github.com` は **IP あたり 60 req/hour** と枠が狭い。CDN である raw の方が遥かに緩く、403 の回避先として API に移すのは逆効果 |
+| `User-Agent` を明示する | `UnityWebRequest` 既定の UA は 403 の対象になり得る |
+| `CheckIntervalHours`（既定 6h）を空けて取得する | 対策の本命。下記参照 |
+
+### なぜ間隔制御が必須か
+
+`StartCheckBackgroundTask()` は「成功済みならスキップ、エラーなら再試行」という判定を
+するが、**エラー時に無条件で再試行すると自己増幅ループに入る**。
+
+Unity のドメインリロードはスクリプト保存ごと・Play mode 出入りごとに走るため、
+開発中は数分で何十回も発生する。つまり:
+
+```
+レート制限に掛かる → 403 → State.Error → 次のドメインリロードで即再試行
+  → さらにレート制限を悪化 → 永久に「取得できません」
+```
+
+そのため最終リクエスト時刻を **`EditorPrefs`** に持ち、間隔内は通信しない。
+`SessionState` ではエディタ再起動でリセットされ、再起動のたびに撃ってしまうので不可。
+
+### 間隔内の表示
+
+間隔内でも「確認中...」のまま固めないよう、`ApplyCachedResult()` が **EditorPrefs に
+保存した前回の成功結果**をセッションへ流し込み `done` を立てる。
+
+- 永続キャッシュを更新するのは**成功時のみ**。失敗で上書きすると、間隔内の表示から
+  「前回取得できていた最新版」が消えてしまう。
+- 手動リロード（`ForceRecheck()`）は明示的なユーザー操作なので間隔を無視する。
+  抑制対象は自動チェックだけ。
+
 ## エラーハンドリング方針
 
 - 通信失敗・HTTP エラー・JSON パース失敗・`version` 欠落 → すべて `State.Error`。
 - 指定ブランチで失敗した場合は `"main"` にフォールバックして再取得。
-- `DennokoVersionChecker` は例外を投げない。失敗時は必ず一度 `Debug.LogWarning`
-  で URL・httpCode・error を出す（原因追跡用）。
-- **エラーはセッションキャッシュしない**。ウィンドウを開き直す / ドメインリロードの
-  たびに再試行し、一時的な失敗（インポート直後の中断等）から自己回復する。
+  ただし **403 / 429 のときはフォールバックしない** — ブランチを変えても解消せず、
+  リクエストを増やしてレート制限を悪化させるだけ。
+- `DennokoVersionChecker` は例外を投げない。失敗時は必ず一度 `Debug.LogWarning` で
+  URL・httpCode・error・**レスポンス本文**を出す。本文が無いと `HTTP/1.1 403 Forbidden`
+  としか出ず、レート制限なのか repo 名の誤りなのか切り分けられない。
+- `req.timeout` を設定する（既定は無期限待ち）。
+- エラーは永続キャッシュしないので、間隔が明ければ自動的に再試行され、一時的な失敗
+  （インポート直後の中断等）から自己回復する。
 
 ## 動作確認
 
@@ -220,3 +266,5 @@ if (reloadButton != null)
 5. 言語切替で接尾辞テキストが切り替わる。
 6. 他プロジェクトへインポートして開く → `v0.0.0` に固定されず正しいローカル版が出る。
 7. 一致しているのに「更新あり <自分と同じ版>」が出ない（State は表示時に再計算）。
+8. スクリプトを保存してドメインリロードを数回起こす → **2 回目以降は通信が走らず**、
+   表示は前回結果のまま（「確認中...」で固まらない）。↻ ボタンでは毎回走る。
