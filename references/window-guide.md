@@ -44,6 +44,8 @@ Editor/
      **プロジェクト内に 1 つだけ**置いて共有する（重複配置はコンパイルエラー）
    - `DennokoUIFont.WarmupJapanese` にツールの UI で使う日本語を書き足す
      （実行中のアトラス追加＝文字化けの原因を減らす。`references/troubleshooting.md` §10）
+     - 「代表的な語をいくつか」では足りない。**UXML のテキストとローカライズ用 JSON に
+       出現する日本語を全文字入れる**（数百文字でも問題ない）。UI 文言を追加したら更新する
 3. Unity インポート後、UXML / USS の `.meta` から GUID を控えて
    C# の `UXML_GUID` / `USS_GUID` 定数に設定する（プレースホルダーのままにしない）
    - GUID の調べ方: `.meta` の `guid:` 行、または Project ビュー右クリック → Copy GUID

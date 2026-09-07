@@ -23,6 +23,7 @@
 | しばらく使うと**一部の文字だけ**□ / 空白になる | 実行中に増えた追加アトラスが未保護のまま破棄された | §10-① |
 | 一度テキストが崩れると再起動まで直らない | 破棄済み FontAsset をキャッシュから返し続けている | §10-② |
 | コンパイルのたびにメモリが増える / 崩れやすくなる | ドメインリロードで FontAsset とアトラスが leak している | §10-③ |
+| ドック解除／再ドックしたウィンドウだけ後からテキストが崩れて直らない | 再アタッチ時に自己修復の監視リストへ戻していない | §10-④ |
 | 横並び行で入力欄がカードの幅を超え、隣のボタンが画面外に消える | `flex-grow` だけで `flex-shrink` を付け忘れている | references/uss-conventions.md §5(頻出ミス) |
 
 ## 1. スタイルが全く適用されない
@@ -290,8 +291,8 @@ private static void Protect(FontAsset fa)
 
 ## 10. フォントキャッシュ消失と自己修復 — §9 対策だけでは再発する
 
-§9 の `hideFlags` 伝播を入れても、次の 3 経路でキャッシュが失われ UI が崩れる。
-`assets/Shared/DennokoUIFont.cs` はこの 3 つすべてに対処済みなので、
+§9 の `hideFlags` 伝播を入れても、次の 4 経路でキャッシュが失われ UI が崩れる。
+`assets/Shared/DennokoUIFont.cs` はこの 4 つすべてに対処済みなので、
 **フォント処理を自前で書かず必ずこのファイルを配置して使うこと。**
 
 ### ① 実行中に増えたアトラステクスチャが未保護のまま破棄される（最頻出）
@@ -379,6 +380,25 @@ private static FontAsset FindExisting()
 ```
 
 同じプロジェクトに dennokoworks 製ツールが複数入っていても 1 つの FontAsset を共有できる。
+
+### ④ 再ドック後に監視対象から外れて自己修復が止まる
+
+`DetachFromPanelEvent` で監視リスト (`_roots`) から外したまま、`AttachToPanelEvent` で
+フォントを貼り直すだけにすると、ウィンドウをドック解除／再ドックした時点でそのウィンドウが
+①〜③ の自己修復対象から永久に外れる。見た目はその場では正常なので気付きにくいが、
+以後アトラスが破棄されると崩れたまま復帰しなくなる。**再アタッチ時に監視リストへ戻すこと。**
+
+```csharp
+root.RegisterCallback<AttachToPanelEvent>(_ => { Track(root); ApplyTo(root); });
+root.RegisterCallback<DetachFromPanelEvent>(_ => _roots.Remove(root));
+
+/// <summary>自己修復の監視対象に入れる（冪等）。</summary>
+private static void Track(VisualElement root)
+{
+    if (!_roots.Contains(root)) _roots.Add(root);
+    HookTick(true);
+}
+```
 
 ## 動作確認チェックリスト（実装完了時に必ず実施）
 
