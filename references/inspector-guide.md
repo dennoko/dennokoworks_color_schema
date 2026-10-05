@@ -17,10 +17,12 @@
 ## 配置手順
 
 1. `DennokoTheme.uss` をプロジェクトに追加（未追加の場合）
-2. `assets/Inspector/` の UXML / C# をコピーして配置
+2. `assets/Shared/DennokoUIFont.cs` を配置（未配置の場合）。`namespace` を合わせる
+   - EditorWindow 側で既に配置済みならコピーしない。**プロジェクト内に 1 つだけ**
+3. `assets/Inspector/` の UXML / C# をコピーして配置
    - `namespace` / クラス名 / `[CustomEditor(typeof(YourComponent))]` の型を変更
    - `PropertyField` の `binding-path` を対象のシリアライズフィールド名に合わせる
-3. `.meta` から GUID を控えて `UXML_GUID` / `USS_GUID` に設定
+4. `.meta` から GUID を控えて `UXML_GUID` / `USS_GUID` に設定
 
 ## Inspector 固有の注意点
 

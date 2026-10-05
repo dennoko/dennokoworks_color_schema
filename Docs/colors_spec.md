@@ -12,7 +12,7 @@ GoogleのMaterial Design 3 (M3) とAppleのHuman Interface Guidelines (HIG) の�
 *   **`level1` (`#1e1e1e`)**: カード、入力フォームなど。背景より一段明るくし、浮いている印象を与えます（フローティングデザインの基盤）。
 *   **`level2` (`#2c2c2c`)**: ホバー状態やドロップダウン、ポップアップ等、さらに上層の要素に使用します。
 
-### `theme.outline` (`#3a3a3a`)
+### `theme.outline` (`#484848`)
 境界線やセパレーター。非常に低コントラストなグレーを使用し、要素を区切りつつも目立たせません。
 
 ### `theme.typography` (タイポグラフィ)

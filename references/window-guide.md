@@ -18,6 +18,7 @@
 │ │ [☑] TOGGLE SECTION     [Reset]   │ │  ← .dennoko-toggle-header
 │ │  [スライダーなど]                 │ │  ← name="...-content"
 │ └──────────────────────────────────┘ │
+│ ──────────────────────────────────── │  ← .dennoko-separator
 │ ┌──────────────────────────────────┐ │
 │ │ [      Apply & Save (Primary)   ]│ │  ← .dennoko-card .dennoko-footer
 │ │ [         Reset All             ]│ │
@@ -33,11 +34,18 @@ Editor/
 ├─ UI/
 │   ├─ DennokoTheme.uss        ← assets/DennokoTheme.uss をコピー
 │   └─ YourEditorWindow.uxml   ← assets/EditorWindow/ からコピー
+├─ DennokoUIFont.cs            ← assets/Shared/ からコピー（フォント管理・共通）
 └─ YourEditorWindow.cs         ← assets/EditorWindow/ からコピー
 ```
 
-1. 上記 3 ファイルをコピーして配置する
+1. 上記 4 ファイルをコピーして配置する
 2. C# の変更箇所: `namespace` / クラス名 / `[MenuItem("Tools/Your Tool Name")]`
+   - `DennokoUIFont.cs` も `namespace` を合わせる。Inspector も作る場合、このファイルは
+     **プロジェクト内に 1 つだけ**置いて共有する（重複配置はコンパイルエラー）
+   - `DennokoUIFont.WarmupJapanese` にツールの UI で使う日本語を書き足す
+     （実行中のアトラス追加＝文字化けの原因を減らす。`references/troubleshooting.md` §10）
+     - 「代表的な語をいくつか」では足りない。**UXML のテキストとローカライズ用 JSON に
+       出現する日本語を全文字入れる**（数百文字でも問題ない）。UI 文言を追加したら更新する
 3. Unity インポート後、UXML / USS の `.meta` から GUID を控えて
    C# の `UXML_GUID` / `USS_GUID` 定数に設定する（プレースホルダーのままにしない）
    - GUID の調べ方: `.meta` の `guid:` 行、または Project ビュー右クリック → Copy GUID
@@ -94,6 +102,22 @@ C# で `BindToggleSection()`（テンプレートに定義済み）を 1 行呼�
 
 - `toggle = true` → コンテンツ有効（通常表示）
 - `toggle = false` → `SetEnabled(false)` により Unity が自動でグレーアウト・操作不可
+
+**トグル（チェックボックス）は囲まない** — チェックボックスとそのラベルは
+「入力欄」ではなくテキスト行として見せる。トグル自体にも、トグルで開閉・
+有効化する項目のまとまりにも枠や背景の囲みを付けない。階層を示したいときは
+インデント（`margin-left`）を使う。
+
+```xml
+<ui:Toggle name="overwrite-toggle" text="上書き保存を有効にする" />
+<!-- トグルで制御される項目。カードや枠では囲まず、インデントだけで従属を示す -->
+<ui:VisualElement name="overwrite-group" style="margin-left: 16px;">
+    <!-- ... -->
+</ui:VisualElement>
+```
+
+囲みが出てしまう場合は references/troubleshooting.md §4-② を見る
+（テーマ USS の §④で打ち消し済み。テーマを改変したときに再発しやすい）。
 
 **セパレーター**
 

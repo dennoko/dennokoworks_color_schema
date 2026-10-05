@@ -35,6 +35,9 @@ Unity エディタのビルトインコントロールは、エディタテー�
   子孫セレクタを併記して子要素まで色を届かせる（テーマ USS に実例あり）。
 - 入力フィールドの内側テキスト要素に適用してよいのは **color のみ**。
   背景・枠・パディングまで掛けるとフィールド内部が二重ボックスになり崩れる。
+  Toggle では `Toggle.text` のラベルが `.unity-base-field__input` の内側にあるため、
+  **ラベル文字が箱で囲まれる**という形で現れる
+  （references/troubleshooting.md §4-②）。
 
 ## 3. カラーは USS 変数を経由する
 
@@ -50,7 +53,7 @@ UXML のインライン style や C# の `style.color` にも直書きしない�
 
 | やりたいこと | CSS | USS |
 |---|---|---|
-| 枠線 | `border: 1px solid #3a3a3a;` | ショートハンド不可。`border-width: 1px; border-color: ...;` に分ける |
+| 枠線 | `border: 1px solid #484848;` | ショートハンド不可。`border-width: 1px; border-color: ...;` に分ける |
 | 背景 | `background: #121212;` | `background` 不可。`background-color` を使う |
 | 太字 | `font-weight: bold;` | `-unity-font-style: bold;` |
 | 文字揃え | `text-align: center;` | `-unity-text-align: middle-center;` |
@@ -78,6 +81,43 @@ UI Toolkit のレイアウトエンジンは Flexbox (Yoga)。
   `flex-shrink: 0` を付ける**。付けないとウィンドウ縮小時に潰れる
   （テーマ USS の `.dennoko-header` 等には設定済み）
 - row 内で幅いっぱいに広げる子には `flex-grow: 1`
+
+### ⚠ 頻出ミス: `flex-grow` だけでは縮まない（隣のボタンが枠外に消える）
+
+`ObjectField` + `Clear` ボタンのような「伸びる入力欄 + 固定幅ボタン」の横並び
+(`.dennoko-hrow`) で、入力欄に `flex-grow: 1` だけを付けて `flex-shrink` を
+付け忘れると、**カードが狭いときに入力欄が縮まず、隣のボタンがカード外
+（画面外）へ押し出される**。実際にこの事故が起きたことがある。
+
+原因: `flex-grow` は「余った空間を分配する」役割しか持たない。空間が
+足りない（コンテンツの合計幅がカード幅を超える）場合に縮む役割は
+`flex-shrink` が担当するため、`flex-grow` だけでは足りない。
+
+```xml
+<!-- ❌ 事故った例: 幅が超過してもボタンごと右にはみ出る -->
+<uie:ObjectField name="avatar-field" style="flex-grow: 1;" />
+
+<!-- ✅ 正しい例: flex-grow と flex-shrink を必ずセットで指定する -->
+<uie:ObjectField name="avatar-field" class="dennoko-col-grow" />
+```
+
+```css
+/* 汎用の「伸びて縮む」ユーティリティクラス。プロジェクト固有 USS に追加する。
+   overflow: hidden も付け、縮んだ後に中身が枠外へはみ出さないようにする。 */
+.dennoko-root .dennoko-col-grow {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+```
+
+- 複数ボタンを均等割りする場合（Setup / Remove 等）も同様に、
+  `flex-grow: 1;` の隣に必ず `flex-shrink: 1;` を書く。
+- 逆に、隣に置く固定幅ボタン（Clear 等）には `flex-shrink: 0;` と明示の
+  `width` を付け、縮む側と縮まない側の役割を明確に分ける。
+- **レビュー時のチェック方法**: `flex-grow` を書いた行を見つけたら、
+  同じ要素（または同じルール）に `flex-shrink` が書かれているか必ず確認する。
+  書いていなければ高確率でこの事故が起きる。
 
 ## 6. 動的な要素生成 (C# で作ってよいケース)
 
