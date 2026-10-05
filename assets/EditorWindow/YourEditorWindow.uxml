@@ -1,8 +1,14 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
 
-    <!-- ヘッダー -->
+    <!-- ヘッダー (バージョン表示を付ける場合は references/version-check-guide.md 参照) -->
     <ui:VisualElement class="dennoko-header">
-        <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
+        <ui:VisualElement class="dennoko-header-titlegroup">
+            <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
+            <!-- バージョンチェックを付ける場合は有効化:
+            <ui:Label name="version-label" text="" class="dennoko-version-label" />
+            <ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
+            -->
+        </ui:VisualElement>
     </ui:VisualElement>
     <ui:VisualElement class="dennoko-separator" />
 

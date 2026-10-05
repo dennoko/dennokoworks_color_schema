@@ -161,7 +161,7 @@ private void ApplyVersionLabel()
 <ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
 ```
 
-**USS**（DennokoTheme.uss に追加。独自クラスなので `.dennoko-root` 前置規約に従う）:
+**USS**（`DennokoTheme.uss` に定義済み。独自スタイルを追加・改変する場合は `.dennoko-root` 前置規約に従う）:
 ```css
 .dennoko-root .dennoko-version-reload-button {
     width: 18px;

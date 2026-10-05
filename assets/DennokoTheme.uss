@@ -357,6 +357,23 @@
     color: var(--dennoko-semantic-warning);
 }
 
+/* バージョン再確認ボタン (↻)
+   (references/version-check-guide.md 参照) */
+.dennoko-root .dennoko-version-reload-button {
+    width: 18px;
+    height: 18px;
+    margin-left: 4px;
+    padding: 0;
+    font-size: 12px;
+    color: var(--dennoko-text-tertiary);
+    background-color: transparent;
+    border-width: 0;
+}
+.dennoko-root .dennoko-version-reload-button:hover {
+    color: var(--dennoko-text-primary);
+    background-color: var(--dennoko-surface-2);
+}
+
 /* セクション見出し (大文字英字を想定した小さめの見出し)
    ※ Toggle に付与した場合、文字は子要素 (.unity-toggle__text) にあり、
    汎用リセット .dennoko-root .unity-text-element が子要素に「直接」マッチして

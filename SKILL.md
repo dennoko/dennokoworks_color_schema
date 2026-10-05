@@ -1,91 +1,136 @@
 ---
 name: dennokoworks-design
-description: dennokoworks フローティングデザインシステムを Unity Editor 拡張（EditorWindow / CustomEditor / Inspector）に UI Toolkit (UXML/USS) で適用する。エディタテーマ (Light/Dark) に依存しない UI の新規実装・改修・IMGUI からの移行に使う。
+description: dennokoworks フローティングデザインシステムを Unity Editor 拡張（EditorWindow / CustomEditor / Inspector）に UI Toolkit (UXML/USS) で適用する。エディタテーマ (Light/Dark) に依存しない UI の新規実装・改修・IMGUI からの移行・GitHub バージョン表示更新チェックに使う。
 ---
 
 # dennokoworks Design Skill
 
 **dennokoworks カラースキーマ（フローティングデザイン）** を Unity Editor 拡張の
-UI Toolkit (UXML/USS) コードとして実装する。
+UI Toolkit (UXML/USS) コードとして実装・改修するスキル。
 
 - **ターゲット環境**: Unity 2022.3 ～ Unity 6
 - **最優先要件**: エディタテーマ (Personal Light / Dark) に左右されず、
-  常にフローティングデザイン（ダークテーマ固定）を維持すること
+  常に洗練されたフローティングデザイン（ダークテーマ固定）を維持すること。
 
-## タスク別ルーティング — 必要なものだけ読む/コピーする
+---
 
-| やりたいこと | コピーするファイル | 読むガイド |
-|---|---|---|
-| EditorWindow を作る | `assets/DennokoTheme.uss` + `assets/EditorWindow/`（UXML/C#） | `references/window-guide.md` |
-| Inspector (CustomEditor) を作る | `assets/DennokoTheme.uss` + `assets/Inspector/`（UXML/C#） | `references/inspector-guide.md` |
-| テーマ USS だけ欲しい | `assets/DennokoTheme.uss` | —（下の絶対規則だけ守る） |
-| 独自の USS クラス/スタイルを追加する | — | `references/uss-conventions.md`（**必読**） |
-| バージョン表記 + 更新チェックを付ける | `assets/VersionCheck/`（C# × 2） | `references/version-check-guide.md` |
-| IMGUI 実装を UI Toolkit へ移行する | 上記 Window/Inspector 一式 | `references/imgui-migration.md` |
-| 見た目が崩れた・テーマ切替で壊れた | — | `references/troubleshooting.md`（症状別表あり） |
-| デザインコンセプトを深く知る | — | `Docs/design_reference.md` / `Docs/colors_spec.md` / `example/index.html` |
+## 標準ワークフロー（基本の 5 ステップ）
 
-テンプレートは**実ファイルとして assets/ にある**。内容を転写せずファイルごとコピーし、
-ガイド記載のカスタマイズポイント（namespace・クラス名・GUID 等）だけ書き換える。
+```
+[1. テンプレート配置] ──> [2. GUID & 識別子設定] ──> [3. UXML 構造定義] ──> [4. C# バインディング] ──> [5. Light/Dark 検証]
+```
 
-## 絶対規則（テンプレートを使うだけでも守ること）
+1. **実ファイルのコピー**: `assets/` 配下のテンプレートをプロジェクトの `Editor/` 配下にコピーする。
+2. **GUID と識別子の置換**:
+   - Unity インポート後、UXML/USS の `.meta` から GUID を取得し、C# の `UXML_GUID` / `USS_GUID` に設定。
+   - `namespace`、クラス名、`[MenuItem]` または `[CustomEditor]` の対象型を変更。
+3. **UXML での構造定義**:
+   - レイアウトは UXML で完結させる（C# で `new VisualElement()` 手組みは動的リスト以外原則禁止）。
+   - 固定要素（ヘッダー/フッター/ステータス）と可変要素（`ScrollView.dennoko-scroll`）を分離。
+4. **C# でのロジック接続**:
+   - `root.Q<T>("name")` で取得し、イベントやコールバックを登録。
+   - トグルセクションは `BindToggleSection()` ヘルパーを活用。
+   - Inspector の場合は `container.Bind(serializedObject)` を必ず呼ぶ。
+5. **テーマ切替・動作検証**:
+   - Unity の Preferences でテーマを **Light / Dark 両方に切り替えて** 表示を確認（黒文字化・アイコン消失の防止）。
+   - ウィンドウを縮小して固定クロームが潰れず `ScrollView` だけが縮むか確認。
 
-1. **ルート要素に `dennoko-root` クラスを付与する。**
-   USS 変数の定義元かつテーマ非依存の起点。忘れるとスタイル全体が無効になる。
-   EditorWindow は `rootVisualElement`、Inspector は return するコンテナに
-   `AddToClassList("dennoko-root")`。
+---
+
+## タスク別ルーティング
+
+やりたいことに応じて、必要な実ファイルをコピーし、対応ガイドを参照する。
+
+| やりたいこと | コピー元アセット | 参照ガイド | 注意点 / カスタマイズ箇所 |
+|---|---|---|---|
+| **EditorWindow を作る** | `assets/DennokoTheme.uss`<br>`assets/EditorWindow/` (UXML + C#) | `references/window-guide.md` | GUID 2 箇所・`namespace`・クラス名・メニューパスを書き換える |
+| **Inspector (CustomEditor) を作る** | `assets/DennokoTheme.uss`<br>`assets/Inspector/` (UXML + C#) | `references/inspector-guide.md` | `[CustomEditor(typeof(T))]`、`PropertyField` の `binding-path`、`container.Bind()` |
+| **バージョン表記 + 更新チェックを付ける** | `assets/VersionCheck/`<br>（Checker + Version の C# × 2） | `references/version-check-guide.md` | リモートリポジトリに `version.json` を配置。owner / repo / branch 定数を設定 |
+| **IMGUI 実装を移行する** | 上記 Window または Inspector 一式 | `references/imgui-migration.md` | `UniTexTheme` / `PushEditorTheme` / テクスチャ生成は全廃し UXML+USS に置き換え |
+| **独自の USS クラスを追加・改変する** | — | `references/uss-conventions.md` | **必読**。必ず `.dennoko-root` を前置し詳細度 (0,2,0) で勝たせる（`!important` 不可） |
+| **表示崩れ・テーマ切替問題を解決する** | — | `references/troubleshooting.md` | 症状別インデックスと動作確認チェックリストを確認 |
+| **デザイン思想・カラー仕様の確認** | — | `Docs/design_reference.md`<br>`Docs/colors_spec.md`<br>`colors.json` | 明度差による Elevation、タイポグラフィ階層、コントラスト比の意図を確認 |
+
+---
+
+## 絶対規則（必ず守ること）
+
+1. **ルート要素に `dennoko-root` クラスを必ず付与する。**
+   - USS 変数（`--dennoko-*`）の定義元かつテーマ非依存スタイルの起点。忘れると全スタイルが無効化される。
+   - EditorWindow: `rootVisualElement.AddToClassList("dennoko-root")`
+   - Inspector: return する container に `container.AddToClassList("dennoko-root")`
 2. **カラーは USS 変数 `var(--dennoko-*)` を経由する。**
-   直書きは `DennokoTheme.uss` の変数定義部のみ。UXML インライン style や
-   C# の `style.color` に色を書かない。
-3. **USS に `!important` は存在しない（書くと宣言が破棄される）。**
-   独自クラスのセレクタは必ず `.dennoko-root` を前置し、詳細度で解決する。
-   詳細は `references/uss-conventions.md`。
-4. **役割分担: UXML = 構造 / USS = スタイル / C# = ロジック。**
-   C# で `new VisualElement()` を手組みしない（動的リストは例外）。
+   - カラーコードの直書きは `DennokoTheme.uss` の変数定義部のみ。
+   - UXML のインライン style や C# の `style.color` にカラーコードを直書きしない。
+3. **USS に `!important` は存在しない（書くと宣言が無効化される）。**
+   - 優先度はすべてセレクタの詳細度と定義順で制御する。独自クラスは必ず `.dennoko-root .your-class` で定義する。
+4. **役割分担の厳守: UXML = 構造 / USS = スタイル / C# = ロジック。**
+   - C# で `new VisualElement()` を手組みしてスタイリングしない（動的リストアイテム生成のみ例外）。
 5. **UXML / USS は GUID でロードする。**
-   テンプレートの `YOUR_*_GUID_HERE` プレースホルダーは、Unity インポート後に
-   `.meta` の GUID（または右クリック → Copy GUID）へ必ず置き換える。
+   - テンプレートの `YOUR_*_GUID_HERE` は Unity インポート後に `.meta` の GUID へ必ず置き換える（パス指定はアセット移動で壊れるため禁止）。
+6. **固定クロームには `flex-shrink: 0`、スクロール領域には `.dennoko-scroll` を指定する。**
+   - ヘッダー、フッター、ステータスバーがウィンドウ縮小時に押し潰されるのを防ぐ。
+
+---
 
 ## カラーパレット（クイックリファレンス）
 
-すべて `DennokoTheme.uss` の `.dennoko-root` に USS 変数として定義済み。
-マスターデータは `colors.json`。
+すべて `DennokoTheme.uss` の `.dennoko-root` に定義済み（マスターデータ: `colors.json`）。
 
-| 役割 | HEX | USS 変数 | 専用クラス |
-|---|---|---|---|
-| アプリ背景 | `#121212` | `--dennoko-surface-0` | — |
-| カード・入力欄背景 | `#1e1e1e` | `--dennoko-surface-1` | — |
-| ツールバー・ホバー背景 | `#2c2c2c` | `--dennoko-surface-2` | — |
-| 境界線・セパレーター | `#3a3a3a` | `--dennoko-outline` | — |
-| タイトル・強調 | `#ffffff` | `--dennoko-text-primary` | `.dennoko-text-primary` |
-| 本文・ラベル | `#cccccc` | `--dennoko-text-secondary` | （デフォルト。指定不要） |
-| 補足・見出し | `#aaaaaa` | `--dennoko-text-tertiary` | `.dennoko-text-tertiary` |
-| 無効状態 | `#555555` | `--dennoko-text-disabled` | `.dennoko-text-disabled` |
-| エラー | `#9b1b30` | `--dennoko-semantic-error` | `.dennoko-text-error` |
-| 警告 | `#ffb74d` | `--dennoko-semantic-warning` | `.dennoko-text-warning` |
-| 成功 | `#4caf50` | `--dennoko-semantic-success` | `.dennoko-text-success` |
-| 情報 | `#64b5f6` | `--dennoko-semantic-info` | `.dennoko-text-info` |
-| アクセント | `#ffffff` | `--dennoko-accent` | — |
+| 役割 | HEX | USS 変数 | 専用ユーティリティクラス | 用途 |
+|---|---|---|---|---|
+| アプリ背景 | `#121212` | `--dennoko-surface-0` | — | 最背面のベタ塗り背景（奥行きのゼロ地点） |
+| カード・入力欄背景 | `#1e1e1e` | `--dennoko-surface-1` | — | 浮かび上がるカード・フィールドの背景 |
+| ツールバー・ホバー背景 | `#2c2c2c` | `--dennoko-surface-2` | — | ツールバー、ホバー状態、強調コンテナ |
+| 境界線・区切り線 | `#3a3a3a` | `--dennoko-outline` | — | カード枠線、セパレーター |
+| タイトル・強調 | `#ffffff` | `--dennoko-text-primary` | `.dennoko-text-primary` | 最重要テキスト、見出し、アクティブ文字 |
+| 本文・標準ラベル | `#cccccc` | `--dennoko-text-secondary` | （デフォルト） | 通常ラベル・説明文（クラス指定不要） |
+| 補足・注記 | `#aaaaaa` | `--dennoko-text-tertiary` | `.dennoko-text-tertiary` | メタデータ、小さな注記、サブ情報 |
+| 無効状態 | `#555555` | `--dennoko-text-disabled` | `.dennoko-text-disabled` | 非活性テキスト |
+| エラー | `#9b1b30` | `--dennoko-semantic-error` | `.dennoko-text-error` | 危険・異常・取得失敗 |
+| 警告 | `#ffb74d` | `--dennoko-semantic-warning` | `.dennoko-text-warning` | 注意・要確認 |
+| 成功 | `#4caf50` | `--dennoko-semantic-success` | `.dennoko-text-success` | 完了・最新版・正常 |
+| 情報 | `#64b5f6` | `--dennoko-semantic-info` | `.dennoko-text-info` | ヒント・通知 |
+| アクセント | `#ffffff` | `--dennoko-accent` | — | フォーカス枠・最重要強調 |
 
-## 主要な UI 部品クラス（DennokoTheme.uss に定義済み）
+---
 
-`.dennoko-card`（セクションカード） / `.dennoko-card-header` / `.dennoko-section-title` /
-`.dennoko-toggle-header`（トグル + Reset の横並び） / `.dennoko-header`（ウィンドウヘッダー） /
-`.dennoko-title` / `.dennoko-separator` / `.dennoko-scroll`（メインスクロール領域） /
-`.dennoko-footer`（フッター。card と併用） / `.dennoko-status`（+ `--success` / `--error`） /
-`.dennoko-button-primary` / `.dennoko-button-secondary` / `.dennoko-button-active` /
-`.dennoko-toolbar` / `.dennoko-inspector-root`（Inspector 余白打ち消し）
+## 主要 UI 部品クラス一覧（`DennokoTheme.uss` 定義済み）
 
-使い方の実例は `assets/EditorWindow/YourEditorWindow.uxml` を見るのが最短。
+### 構造・レイアウト
+- `.dennoko-root`: ルート要素必須クラス（変数定義 & Surface0 背景）。
+- `.dennoko-card`: セクションカード（Surface1、枠線、角丸 8px、内側パディング 12px）。
+- `.dennoko-card-header`: カード内見出しの下線付きヘッダー行。
+- `.dennoko-toggle-header`: トグルと Reset ボタンを両端配置する横並びヘッダー。
+- `.dennoko-header`: ウィンドウ上部ヘッダー行（`flex-shrink: 0`）。
+- `.dennoko-header-titlegroup`: タイトルとバージョンラベルを横並びにするグループ。
+- `.dennoko-separator`: 1px の水平区切り線（Outline 色、`flex-shrink: 0`）。
+- `.dennoko-scroll`: スクロール領域（ScrollView に付与。縮小時はここだけが縮む）。
+- `.dennoko-footer`: ウィンドウ下部アクション領域（`flex-shrink: 0`、card と併用）。
+- `.dennoko-toolbar`: カード上端などに配置するツールバー行（Surface2 背景）。
+- `.dennoko-inspector-root`: Inspector 専用の左右余白打ち消しクラス（ネガティブマージン）。
 
-## デザインコンセプト（要点）
+### ボタン・入力
+- `.dennoko-button-primary`: 主アクションボタン（Apply & Save 等。Surface2、太字、34px）。
+- `.dennoko-button-secondary`: 副アクションボタン（Reset 等。26px）。
+- `.dennoko-button-active`: トグル型ボタンのアクティブ（ON）表示。
+- ※ 標準の `TextField`, `Slider (show-input-field="true")`, `Toggle`, `ObjectField`, `DropdownField` はテーマ USS が自動装飾するためクラス付与不要。
 
-- 全体背景は最も暗い Surface0。コンテンツは Surface1 のカードとして「浮いて」見せる
-- USS に box-shadow はない。Elevation は**サーフェス間の明度差**で表現する
-- 表面間のコントラストは低め、テキストは高コントラスト（白系）
-- 境界線は `--dennoko-outline` で要素の輪郭を示す
+### ステータス・バージョン
+- `.dennoko-status`: ステータスバー（Ready 表示等）。
+  - `.dennoko-status--success`: 成功時ハイライト（半透明グリーン背景）。
+  - `.dennoko-status--error`: エラー時ハイライト（半透明レッド背景 + 読みやすい文字色）。
+- `.dennoko-version-label`: バージョン表示テキスト（10px、Tertiary 色）。
+  - `.dennoko-version-label--update`: 更新あり表示（太字グリーン）。
+  - `.dennoko-version-label--error`: 取得失敗表示（警告色）。
+- `.dennoko-version-reload-button`: バージョン再確認ボタン（↻）。
 
-## 実装完了時
+---
 
-`references/troubleshooting.md` 末尾のチェックリストを必ず実施する。
-特に **Light / Dark 両テーマでの表示確認**は省略しない。
+## 完了前チェックリスト（必ず実施）
+
+1. **Light / Dark テーマ両対応**: Unity の Preferences でテーマを切り替え、白文字化け・黒文字化け・アイコン消滅がないか。
+2. **GUID 置換完了**: `YOUR_*_GUID_HERE` が `.meta` の実 GUID にすべて置き換わっているか。
+3. **ルートクラス付与**: ルートに `dennoko-root` が付与されているか（Inspector は `.dennoko-inspector-root` も併用）。
+4. **バインディング確認**: Inspector の場合は `container.Bind(serializedObject)` が呼ばれているか。
+5. **ウィンドウ伸縮テスト**: 極端に小さくしたときに固定クロームが潰れず、スクロール領域だけがスクロールするか。

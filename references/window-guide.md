@@ -42,6 +42,29 @@ Editor/
    C# の `UXML_GUID` / `USS_GUID` 定数に設定する（プレースホルダーのままにしない）
    - GUID の調べ方: `.meta` の `guid:` 行、または Project ビュー右クリック → Copy GUID
 
+## ヘッダーの構成パターン
+
+**標準ヘッダー（タイトルのみ）**
+```xml
+<ui:VisualElement class="dennoko-header">
+    <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
+</ui:VisualElement>
+<ui:VisualElement class="dennoko-separator" />
+```
+
+**バージョン表記 + リロードボタン付きヘッダー（推奨）**
+（C# 側の実装は `references/version-check-guide.md` を参照）
+```xml
+<ui:VisualElement class="dennoko-header">
+    <ui:VisualElement class="dennoko-header-titlegroup">
+        <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
+        <ui:Label name="version-label" text="" class="dennoko-version-label" />
+        <ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
+    </ui:VisualElement>
+</ui:VisualElement>
+<ui:VisualElement class="dennoko-separator" />
+```
+
 ## セクションの追加パターン
 
 **常時表示セクション** — UXML の ScrollView 内に追加する。
