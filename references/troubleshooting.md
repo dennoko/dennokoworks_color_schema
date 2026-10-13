@@ -74,7 +74,9 @@ Unity 標準の Light テーマは、ビルトインコントロール内部の�
 ```
 
 tint だけで成立する例外は「明るい背景 × 暗い tint」の組み合わせ。
-例: チェック時のチェックマーク（白 accent 背景 + ダークグレー `var(--dennoko-surface-2)` tint + `resource("d_checkmark")`）は両テーマでクッキリ視認できる。
+例: チェック時のチェックマーク（白 accent 背景 + グレー `var(--dennoko-checkmark)` tint + `resource("d_checkmark")`）は両テーマでクッキリ視認できる。
+なお、チェックマークは `background-size: 80% 80%` で少し小さく表示している（線幅は画像に焼き込まれていて、
+縮小でしか細くできないため）。Foldout の展開矢印は同じ要素を流用するので、`background-size: initial` で打ち消している。
 
 対象になりやすい要素（**必ず Light テーマの実機で確認**）:
 ドロップダウン矢印 `.unity-base-popup-field__arrow` / チェックマーク

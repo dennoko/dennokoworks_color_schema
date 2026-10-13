@@ -20,6 +20,7 @@
     },
     "interaction": {
       "accent": "#ffffff",
+      "checkmark": "#777777",
       "hoverOverlay": "rgba(255, 255, 255, 0.05)"
     }
   }

@@ -108,6 +108,7 @@ UI Toolkit (UXML/USS) コードとして実装・改修するスキル。
 | 成功 | `#4caf50` | `--dennoko-semantic-success` | `.dennoko-text-success` | 完了・最新版・正常 |
 | 情報 | `#64b5f6` | `--dennoko-semantic-info` | `.dennoko-text-info` | ヒント・通知 |
 | アクセント | `#ffffff` | `--dennoko-accent` | — | フォーカス枠・最重要強調 |
+| チェックマーク | `#777777` | `--dennoko-checkmark` | — | チェックボックスのチェックマーク（白背景上） |
 
 ---
 
