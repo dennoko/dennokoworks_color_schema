@@ -3,9 +3,11 @@
     "surface": {
       "level0": "#121212",
       "level1": "#1e1e1e",
-      "level2": "#2c2c2c"
+      "level2": "#2c2c2c",
+      "level3": "#383838"
     },
     "outline": "#484848",
+    "outlineHover": "#5e5e5e",
     "typography": {
       "primary": "#ffffff",
       "secondary": "#cccccc",
@@ -14,14 +16,31 @@
     },
     "semantic": {
       "error": "#9b1b30",
+      "errorText": "#ff6b6b",
       "warning": "#ffb74d",
       "success": "#4caf50",
       "info": "#64b5f6"
     },
     "interaction": {
       "accent": "#ffffff",
-      "checkmark": "#777777",
+      "checkmark": "#121212",
       "hoverOverlay": "rgba(255, 255, 255, 0.05)"
+    },
+    "selection": {
+      "border": "#64b5f6",
+      "background": "rgba(100, 181, 246, 0.16)",
+      "backgroundHover": "rgba(100, 181, 246, 0.26)"
+    },
+    "component": {
+      "listAltBackground": "rgba(255, 255, 255, 0.025)",
+      "progressFill": "rgba(100, 181, 246, 0.55)"
+    },
+    "status": {
+      "successBackground": "rgba(76, 175, 80, 0.25)",
+      "errorBackground": "rgba(155, 27, 48, 0.45)",
+      "errorText": "#ffa6a6",
+      "warningBackground": "rgba(255, 183, 77, 0.12)",
+      "infoBackground": "rgba(100, 181, 246, 0.12)"
     }
   }
 }

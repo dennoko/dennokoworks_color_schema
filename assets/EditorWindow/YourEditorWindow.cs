@@ -74,7 +74,7 @@ namespace YourNamespace   // ← 変更する
         {
             _statusLabel = root.Q<Label>("status-label");
 
-            // トグル付きセクション: トグル OFF でコンテンツをグレーアウト
+            // トグル付きセクション: トグル OFF でセクションを折りたたむ
             BindToggleSection(root,
                 toggleName:  "color-correction-toggle",
                 contentName: "color-correction-content",
@@ -89,16 +89,24 @@ namespace YourNamespace   // ← 変更する
             root.Q<Button>("reset-all-button").clicked += ResetAll;
         }
 
-        /// <summary>トグル・コンテンツ・Reset ボタンを接続する共通ヘルパー。</summary>
+        private const string CollapsedClass = "dennoko-toggle-section--collapsed";
+
+        /// <summary>
+        /// トグル・コンテンツ・Reset ボタンを接続する共通ヘルパー。
+        /// トグル OFF でセクションを折りたたむ (カード = コンテンツの親に
+        /// .dennoko-toggle-section--collapsed を付ける。見た目は USS 側で定義)。
+        /// グレーアウト (SetEnabled) ではなく折りたたみにすることで、無効な項目を画面から消す。
+        /// </summary>
         private static void BindToggleSection(
             VisualElement root, string toggleName, string contentName,
             string resetName, System.Action onReset)
         {
             var toggle  = root.Q<Toggle>(toggleName);
             var content = root.Q<VisualElement>(contentName);
+            var section = content.parent;
 
-            toggle.RegisterValueChangedCallback(evt => content.SetEnabled(evt.newValue));
-            content.SetEnabled(toggle.value);
+            toggle.RegisterValueChangedCallback(evt => section.EnableInClassList(CollapsedClass, !evt.newValue));
+            section.EnableInClassList(CollapsedClass, !toggle.value);
 
             var reset = root.Q<Button>(resetName);
             if (reset != null && onReset != null)

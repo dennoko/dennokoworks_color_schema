@@ -8,14 +8,17 @@
 | `PushEditorTheme()` / `PopEditorTheme()` | **不要**。USS の子孫セレクタが常時適用されるため Push/Pop の概念自体がない |
 | `Initialize()` + テクスチャキャッシュ | **不要**。テクスチャ生成・ドメインリロード対策は不要になる |
 | `CardStyle` / `DrawSection(title, ...)` | `<ui:VisualElement class="dennoko-card">` + 見出し `Label` |
-| `DrawToggleSection(...)` | `.dennoko-toggle-header` + `Toggle` + `BindToggleSection()` ヘルパー |
+| `DrawToggleSection(...)` | `.dennoko-toggle-header` + `Toggle` + `.dennoko-toggle-section__content` + `BindToggleSection()` ヘルパー（OFF で折りたたむ。`GUI.enabled = false` のグレーアウトは移植しない） |
 | `YourTheme.Surface0` 等の Color 定数 | `var(--dennoko-surface-0)` 等の USS 変数 |
 | `YourTheme.TextPrimary` | `.dennoko-text-primary` クラス |
 | `YourTheme.TextSecondary` | 指定不要（`.unity-text-element` のデフォルト） |
 | `YourTheme.TextTertiary` | `.dennoko-text-tertiary` クラス |
 | `YourTheme.SemanticError` 等 | `.dennoko-text-error` 等、または `var(--dennoko-semantic-error)` |
-| `ActionButtonStyle` / `GUILayout.Button` | `<ui:Button class="dennoko-button-primary">` |
+| `ActionButtonStyle` / `GUILayout.Button` | `<ui:Button class="dennoko-button-primary">`（白塗り。画面に 1 つ） |
 | `SecondaryButtonStyle` | `<ui:Button class="dennoko-button-secondary">` |
+| フッターのボタン群（縦積み） | `<ui:VisualElement class="dennoko-footer">` に左 Secondary・右 Primary を 1 行で（カードで囲まない） |
+| `EditorGUILayout.HelpBox(msg, type)` | `<ui:HelpBox message-type="..." class="dennoko-helpbox--warning">` 等 |
+| `GUI.enabled = false` での読み取り専用表示 | `readonly="true"` + `.dennoko-field-readonly` |
 | `EditorGUILayout.TextField(...)` | `<ui:TextField>`（`.unity-base-field__input` の上書きが自動適用） |
 | `EditorGUILayout.ObjectField(...)` | `<uie:ObjectField>` |
 | `EditorGUILayout.Slider(...)` | `<ui:Slider show-input-field="true">` |

@@ -22,14 +22,15 @@
                 type="UnityEngine.Texture2D, UnityEngine.CoreModule" />
         </ui:VisualElement>
 
-        <!-- ON/OFF トグル付きセクション -->
+        <!-- ON/OFF トグル付きセクション (OFF で折りたたまれる)
+             中身には .dennoko-toggle-section__content を付ける -->
         <ui:VisualElement class="dennoko-card">
             <ui:VisualElement class="dennoko-card-header dennoko-toggle-header">
                 <ui:Toggle name="color-correction-toggle" text="COLOR CORRECTION"
                     value="true" class="dennoko-section-title" />
                 <ui:Button name="color-correction-reset" text="Reset" />
             </ui:VisualElement>
-            <ui:VisualElement name="color-correction-content">
+            <ui:VisualElement name="color-correction-content" class="dennoko-toggle-section__content">
                 <ui:Slider label="Hue" name="hue-slider"
                     low-value="-180" high-value="180" show-input-field="true" />
                 <ui:Slider label="Saturation" name="sat-slider"
@@ -39,12 +40,12 @@
 
     </ui:ScrollView>
 
-    <ui:VisualElement class="dennoko-separator" />
-
-    <!-- フッター (アクションボタン)。dennoko-footer で縮小時の潰れを防ぐ -->
-    <ui:VisualElement class="dennoko-card dennoko-footer">
-        <ui:Button name="apply-button" text="Apply &amp; Save" class="dennoko-button-primary" />
+    <!-- フッター (アクションボタン)。カードで囲まず、上罫線だけでスクロール領域と仕切る。
+         1 行に並べ、左に固定幅の Secondary、右に伸びる Primary を置く。
+         dennoko-footer は flex-shrink: 0 で縮小時の潰れも防ぐ -->
+    <ui:VisualElement class="dennoko-footer">
         <ui:Button name="reset-all-button" text="Reset All" class="dennoko-button-secondary" />
+        <ui:Button name="apply-button" text="Apply &amp; Save" class="dennoko-button-primary" />
     </ui:VisualElement>
 
     <!-- ステータスバー -->

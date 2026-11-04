@@ -38,6 +38,17 @@ Unity エディタのビルトインコントロールは、エディタテー�
   Toggle では `Toggle.text` のラベルが `.unity-base-field__input` の内側にあるため、
   **ラベル文字が箱で囲まれる**という形で現れる
   （references/troubleshooting.md §4-②）。
+- **祖先のホバーにも負ける。** 入力欄のホバー `.dennoko-root .unity-base-field:hover .unity-base-field__input`
+  (0,4,0) は「ホバーされた BaseField の子孫にある入力欄すべて」にマッチする。RadioButtonGroup 内の
+  RadioButton や BoundsField 内の Vector3Field のように BaseField が入れ子になると、外側のホバーで
+  内側の打ち消しが負ける。`.dennoko-root .unity-base-field:hover .unity-radio-button .unity-base-field__input`
+  (0,5,0) のように祖先ホバー込みのセレクタを併記して打ち消す。
+- **入れ子の BaseField は子セレクタ `>` で限定する。** 複合フィールドや Slider の外枠を消すときは
+  `.unity-composite-field > .unity-base-field__input` のように直下の `__input` だけを狙う
+  （子孫セレクタにすると末端の数値欄の枠まで消える）。
+- **無効状態 (`:disabled`) のルールはファイル末尾に置く。** 通常・ホバーのルールと詳細度が同じになることが
+  多いため、定義順（後勝ち）で確実に勝たせる。`opacity` は `.unity-disabled` が子孫全員に付くため
+  入れ子の段数だけ掛け算になる。色で表現する。
 
 ## 3. カラーは USS 変数を経由する
 
@@ -102,7 +113,8 @@ UI Toolkit のレイアウトエンジンは Flexbox (Yoga)。
 ```
 
 ```css
-/* 汎用の「伸びて縮む」ユーティリティクラス。プロジェクト固有 USS に追加する。
+/* 汎用の「伸びて縮む」ユーティリティクラス。DennokoTheme.uss に定義済み
+   (横並び行の .dennoko-hrow も同様)。
    overflow: hidden も付け、縮んだ後に中身が枠外へはみ出さないようにする。 */
 .dennoko-root .dennoko-col-grow {
     flex-grow: 1;

@@ -25,6 +25,17 @@
 | コンパイルのたびにメモリが増える / 崩れやすくなる | ドメインリロードで FontAsset とアトラスが leak している | §10-③ |
 | ドック解除／再ドックしたウィンドウだけ後からテキストが崩れて直らない | 再アタッチ時に自己修復の監視リストへ戻していない | §10-④ |
 | 横並び行で入力欄がカードの幅を超え、隣のボタンが画面外に消える | `flex-grow` だけで `flex-shrink` を付け忘れている | references/uss-conventions.md §5(頻出ミス) |
+| チェックボックス / ラジオの ON と OFF が見分けられない（無効時は特に） | OFF も白塗りにしている | §4-③ |
+| RadioButtonGroup が外枠で囲まれ、各選択肢も入力欄のように枠で囲まれる | Toggle と同じく `__input` に入力フィールド装飾が乗る | §4-③ |
+| Vector / Rect / Bounds が「全体枠 > 各数値枠」の二重・三重枠になる | 親の `__input` にも入力欄装飾が乗る | §11-① |
+| X / Y / Z の入力欄が狭く右に余白が残る | サブフィールドが均等割りされていない | §11-① |
+| BoundsField の Center / Extents が X と重なる（`CXen` のように見える） | サブラベルのビルトイン padding / margin が残っている | §11-② |
+| Slider のレールが入力欄のような枠で囲まれ、数値欄と二重枠になる | Slider の `__input` に入力フィールド装飾が乗る | §12 |
+| エラー文字だけ極端に読みにくい | 文字に `--dennoko-semantic-error` (#9b1b30) を使っている | §13 |
+| 入力欄・選択欄・ボタンが同じトーンで役割が分からない | Elevation の使い分けをしていない | §13 |
+| 無効状態のトーンがコンポーネントごとにばらばら | `:disabled` の色を統一していない / `opacity` の掛け算 | §14 |
+| ListView の交互行が選択中・ホバー中に見える | 交互行の明度差が大きすぎる | §15 |
+| 2 カラムのグリッドで右列の開始位置が行ごとにずれる / カードがスクロールバーの下にはみ出す | `width: 50%` の子に `min-width` を付け、コンテンツ幅が広がっている | §16 |
 
 ## 1. スタイルが全く適用されない
 
@@ -74,7 +85,7 @@ Unity 標準の Light テーマは、ビルトインコントロール内部の�
 ```
 
 tint だけで成立する例外は「明るい背景 × 暗い tint」の組み合わせ。
-例: チェック時のチェックマーク（白 accent 背景 + グレー `var(--dennoko-checkmark)` tint + `resource("d_checkmark")`）は両テーマでクッキリ視認できる。
+例: チェック時のチェックマーク（白 accent 背景 + 暗色 `var(--dennoko-checkmark)` (#121212) tint + `resource("d_checkmark")`）は両テーマでクッキリ視認できる。
 なお、チェックマークは `background-size: 80% 80%` で少し小さく表示している（線幅は画像に焼き込まれていて、
 縮小でしか細くできないため）。Foldout の展開矢印は同じ要素を流用するので、`background-size: initial` で打ち消している。
 
@@ -140,6 +151,35 @@ Toggle の入力コンテナ `.unity-toggle__input` は `.unity-base-field__inpu
 なお `Toggle(label)` コンストラクタで作った場合、文字は `__input` の外側
 （`.unity-base-field__label`）に出るためこの問題は起きない。囲みが出るのは
 `Toggle.text` / UXML の `text=` を使ったときだけ。
+（それでも Toggle は `text=` で書くのが原則。`label=` はラベル列 150px の 2 カラムになり、
+`text=` のトグルと混在すると左右が逆転して見える）
+
+### ③ ON / OFF が見分けられない・ラジオボタンが箱で囲まれる
+
+**OFF = 暗色の箱 + 枠線のみ、ON = 白 (accent) 塗り + 暗色のチェック** にする。
+OFF も白で塗ると、白い箱 = チェック済みに見えて ON と区別できない。無効時は
+ON をグレー塗り・OFF を暗い枠のみにして、無効でも判別できるようにする（§14）。
+
+```css
+.dennoko-root .unity-toggle .unity-toggle__checkmark {          /* OFF */
+    background-color: var(--dennoko-surface-0);
+    background-image: none;
+    border-color: var(--dennoko-outline);
+    border-width: 1px;
+}
+.dennoko-root .unity-toggle:checked .unity-toggle__checkmark {  /* ON */
+    background-color: var(--dennoko-accent);
+    border-color: var(--dennoko-accent);
+    background-image: resource("d_checkmark");
+    -unity-background-image-tint-color: var(--dennoko-checkmark); /* #121212 */
+}
+```
+
+RadioButton / RadioButtonGroup も Toggle と同じ構造（`__input` が `.unity-base-field__input`）のため、
+グループの外枠・各選択肢の枠がどちらも出る。テーマ USS §④-b で打ち消し、丸
+(`.unity-radio-button__checkmark-background`) と点 (`.unity-radio-button__checkmark`) を背景色で描いている。
+RadioButtonGroup は自身も BaseField なので、グループのホバーで内側の打ち消しが負ける
+（祖先ホバー込みのセレクタを併記する。references/uss-conventions.md §2）。
 
 ## 5. ドロップダウンのポップアップメニューはスタイル不可（既知の限界）
 
@@ -183,15 +223,17 @@ void RefreshModeUI()
 }
 ```
 
-### 選択中が見分けられない場合は「青枠」で示す
+### 選択中は「青枠 + 青ティント背景」で示す
 
-`.dennoko-button-active` の背景 (Surface2) は通常状態 (Surface1) との明度差が小さく、
-ボタンが複数並ぶとどれが選択中か分かりにくい。DennokoTheme.uss ではアクティブ時の
-`border-color` を `--dennoko-semantic-info` (#64b5f6) の青にしてこれを解決している。
+通常のボタンも Surface2 に浮かせているため、明度差だけではどれが選択中か分からない。
+DennokoTheme.uss の `.dennoko-button-active` は、枠線を `--dennoko-selection-border` (#64b5f6)、
+背景を `--dennoko-selection-bg`（薄い青）にしてこれを解決している。
 
-- 選択状態を**背景色や文字色だけ**で表現しない。枠線の色差を必ず併用する
-- 独自にアクティブ用スタイルを書く場合も、青は `--dennoko-semantic-info` を使い、
-  カラーコードを直書きしない
+- 選択状態を**背景色だけ・枠線だけ**で表現しない。両方を併用する
+- 独自にアクティブ用スタイルを書く場合も `--dennoko-selection-*` を使い、
+  カラーコードを直書きしない。`--dennoko-accent`（白）はフォーカス・Primary 用で、選択中には使わない
+- ツールバー内のボタンはゴースト表示（枠なし）になるため、ツールバー用のアクティブ指定
+  `.dennoko-toolbar > .unity-button.dennoko-button-active` で青枠を復活させている
 - `:hover` / `:active` の擬似クラスにも `border-color` を再指定する。汎用の
   `.dennoko-root .unity-button:active`（accent の白枠）と詳細度が同じ (0,3,0) のため、
   再指定しないと押下中だけ青枠が白枠に戻ってしまう
@@ -402,6 +444,85 @@ private static void Track(VisualElement root)
 }
 ```
 
+## 11. 複合フィールド (Vector2/3/4・Rect・Bounds) の崩れ
+
+### ① 二重・三重枠 / X・Y・Z の幅が狭い
+
+複合フィールドは「親の `__input` の中に、各サブフィールド（FloatField）の `__input`」がある構造で、
+§③の入力欄装飾が両方に乗ると二重枠になる。BoundsField は「Bounds > Vector3Field (Center/Extents) >
+FloatField」の 3 段なので三重枠になる。テーマ USS §③-b で**親側の枠を子セレクタで消し、末端の
+数値欄だけに枠を出す**:
+
+```css
+.dennoko-root .unity-composite-field > .unity-base-field__input,
+.dennoko-root .unity-bounds-field > .unity-base-field__input {
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+}
+```
+
+サブフィールドは `.unity-composite-field__field` に `flex-grow: 1; flex-shrink: 1; flex-basis: 0` を付けて
+均等割りにし、ラベル→数値の間は 3px、ペア同士の間は 8px（`--first` のみ 0）にしてグルーピングを明確にする。
+
+### ② BoundsField の Center / Extents が X と重なる
+
+BoundsField はラベルが上段に出る構造なので、テーマ USS では `flex-direction: row` にして他の
+フィールドと同じ 2 カラムに揃え、Center / Extents のラベル幅を 48px に固定している。
+⚠ 固定幅にするだけだと、ビルトイン USS の `padding-left` / `margin` が残って固定幅の中が空白で埋まり、
+文字が右へはみ出して X ラベルと重なる（`CXen` / `EXxte` のように見える）。padding / margin を
+すべて明示的に 0 にすること。あわせて 2 行の間に `margin-bottom: 3px`、メインラベルに
+`padding-top: 6px`（1 段目のベースラインに揃える）を指定している。
+
+## 12. Slider が入力欄のような枠で囲まれる
+
+Slider / MinMaxSlider の `__input` も `.unity-base-field__input` なので、§③の装飾が乗ると
+レール全体が枠で囲まれ、右端の数値入力欄と二重枠になる。数値入力欄の有無で行の高さも揃わない。
+スライダーは文字入力欄ではないので、`.unity-base-slider > .unity-base-field__input` の背景と枠を
+消して「レール + つまみ + 数値欄」だけにする（テーマ USS §⑥）。
+
+⚠ スクロールバーも内部に Slider を持つため、Slider 用の `min-height` などがスクロールバーに
+波及しないよう `.unity-scroller .unity-base-slider` で打ち消している。
+
+## 13. Elevation と文字色のコントラスト
+
+- **入力欄・選択欄・ボタンが同じトーン**だと、クリック対象か入力対象かが分からない。
+  文字入力欄は Surface0 に沈め、ボタン・選択欄（`.unity-base-popup-field` / `.unity-enum-field`）は
+  Surface2 に浮かせる（テーマ USS で自動適用）。
+- **エラー文字**に `--dennoko-semantic-error` (#9b1b30) を使うと暗背景でほぼ読めない。
+  文字には `--dennoko-semantic-error-text` (#ff6b6b) を使う（`.dennoko-text-error` はこちらを参照）。
+  `#9b1b30` は背景・枠線専用。
+
+## 14. 無効状態のトーンがばらばら
+
+Unity の既定ではボタンだけ極端に暗く、入力欄は通常とほぼ同じ明るさのまま、といったばらつきが出る。
+テーマ USS 末尾 §⑩ で `:disabled`（`SetEnabled(false)` した要素の子孫すべてに付く）に対して
+文字 = `--dennoko-text-disabled`、枠 = 一段暗く、選択欄の塗り = Surface1、チェック ON = グレー塗り、
+と一律に指定している。
+
+- ⚠ `.unity-disabled { opacity: ... }` は使わない。このクラスは子孫全員に付くため、
+  入れ子の段数だけ透明度が掛け算になり、深い要素ほど見えなくなる。
+- ⚠ §⑩ は通常・ホバーのルールと同じ詳細度になることが多い。**必ずファイル末尾に置く**（後勝ち）。
+
+## 15. ListView の交互行・選択行
+
+Unity 既定の交互行は明度差が大きく、交互行がすべて選択中・ホバー中に見える。テーマ USS §⑧ で
+交互行を `--dennoko-list-alt-bg`（ごくわずかな差）、ホバーを `--dennoko-hover-overlay`、
+選択行を `--dennoko-selection-bg` にしている。
+
+- ListView の高さは `fixed-item-height × 表示行数 + 上下ボーダー` に合わせると、
+  最終行の下に中途半端な余白が残らない。
+- `makeItem` で作る Label は既定の上下 margin / padding で上寄りになるため、0 にして
+  `-unity-text-align: middle-left` を指定する。
+
+## 16. 2 カラムのグリッドがずれる / カードがスクロールバーの下にはみ出す
+
+`flex-wrap: wrap` の子に `width: 50%` と `min-width` を併用すると、ウィンドウが狭いときに
+`min-width` の合計がコンテンツ幅を押し広げ、右列の位置がずれたり、ScrollView のコンテンツが
+ビューポートより広がってカードがスクロールバーの下に潜り込んだりする。
+`width: 50%; max-width: 50%; flex-basis: 50%; flex-grow: 0; flex-shrink: 0;` で幅を固定し、
+`min-width` は付けず、はみ出す文字は `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` で省略する。
+
 ## 動作確認チェックリスト（実装完了時に必ず実施）
 
 1. **Preferences でテーマを Light / Dark 両方に切り替えたか？**
@@ -438,3 +559,15 @@ private static void Track(VisualElement root)
     - **マウスを乗せた状態**でも箱が出ないか（ホバー時だけ復活する崩れがある）
     - トグルで制御する項目のまとまりをカードや枠で囲っていないか
       （階層はインデントで示す）
+    - ON / OFF が（無効状態でも）見分けられるか（§4-③）
+12. **状態表現は揃っているか？**
+    - 文字入力欄は沈み (Surface0)、ボタン・選択欄は浮いているか (Surface2)（§13）
+    - 選択中のボタン・タブに青枠 + 青ティント背景が出ているか（§6）
+    - Primary ボタン（白塗り）が画面に 1 つだけか
+    - 無効状態のトーンが全コンポーネントで揃っているか（§14）
+13. **トグル付きセクションは OFF で折りたたまれるか？**
+    - 中身に `.dennoko-toggle-section__content` を付け、`BindToggleSection()` を呼んでいるか
+    - グレーアウト（`SetEnabled(false)`）で済ませていないか
+14. **枠線が重なっていないか？**
+    - フッターを `.dennoko-card` で囲んでいないか（上罫線のみ）
+    - 複合フィールド・Slider・RadioButtonGroup が二重枠になっていないか（§11・§12・§4-③）

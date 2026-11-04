@@ -176,16 +176,26 @@ private void ApplyVersionLabel()
 
 **USS**（`DennokoTheme.uss` に定義済み。独自スタイルを追加・改変する場合は `.dennoko-root` 前置規約に従う）:
 ```css
+/* 20px 角のアイコンボタン。通常時は枠を見せず、ホバーで枠と背景を出してクリック領域を示す。
+   汎用ボタンの min-height (26px) を打ち消す */
 .dennoko-root .dennoko-version-reload-button {
-    width: 18px;
-    height: 18px;
-    margin-left: 4px;
+    width: 20px;
+    height: 20px;
+    min-height: 0;
+    margin: 0 0 0 4px;
     padding: 0;
-    font-size: 12px;
+    font-size: 13px;
+    -unity-text-align: middle-center;
     color: var(--dennoko-text-tertiary);
+    background-color: transparent;
+    border-width: 1px;
+    border-color: transparent;
+    border-radius: 4px;
 }
 .dennoko-root .dennoko-version-reload-button:hover {
     color: var(--dennoko-text-primary);
+    background-color: var(--dennoko-surface-2);
+    border-color: var(--dennoko-outline);
 }
 ```
 
