@@ -1,16 +1,21 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
 
-    <!-- ヘッダー (バージョン表示を付ける場合は references/version-check-guide.md 参照) -->
-    <ui:VisualElement class="dennoko-header">
-        <ui:VisualElement class="dennoko-header-titlegroup">
-            <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
-            <!-- バージョンチェックを付ける場合は有効化:
+    <!-- ───────── 標準ヘッダー: トップバー (references/window-guide.md「標準ヘッダー」) ─────────
+         左: ツール名 + バージョン + ↻ / 右: 言語 (切り替え先を表示) + マニュアル + 設定 ⋮。
+         要らない要素は消してよい (言語を切り替えないツールは appbar-lang を消す)。
+         アイコンと動作は DennokoAppBar、バージョンの文言は version-check-guide.md の ApplyVersionLabel が入れる -->
+    <ui:VisualElement name="appbar" class="dennoko-appbar">
+        <ui:VisualElement class="dennoko-appbar__title">
+            <ui:Label name="appbar-title" text="YOUR TOOL NAME" class="dennoko-title" />
             <ui:Label name="version-label" text="" class="dennoko-version-label" />
-            <ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
-            -->
+            <ui:Button name="version-reload-button" class="dennoko-icon-button" />
+        </ui:VisualElement>
+        <ui:VisualElement class="dennoko-appbar__actions">
+            <ui:Button name="appbar-lang" text="EN" class="dennoko-appbar-lang" />
+            <ui:Button name="appbar-manual" class="dennoko-icon-button" />
+            <ui:Button name="appbar-settings" class="dennoko-icon-button" />
         </ui:VisualElement>
     </ui:VisualElement>
-    <ui:VisualElement class="dennoko-separator" />
 
     <!-- 設定エリア (スクロール可能)。ウィンドウ縮小時はここだけが縮む -->
     <ui:ScrollView class="dennoko-scroll">
@@ -40,15 +45,25 @@
 
     </ui:ScrollView>
 
-    <!-- フッター (アクションボタン)。カードで囲まず、上罫線だけでスクロール領域と仕切る。
-         1 行に並べ、左に固定幅の Secondary、右に伸びる Primary を置く。
-         dennoko-footer は flex-shrink: 0 で縮小時の潰れも防ぐ -->
-    <ui:VisualElement class="dennoko-footer">
+    <!-- ───────── 標準フッター (references/window-guide.md「標準フッター」) ─────────
+         [出力ドック (任意)] → [フッター] → [ステータス] の順に、スクロール領域の下へ固定する。
+         出力ドック: 出力先など 2 行まで。出力しないツールは丸ごと消し、フッターの joined 修飾クラスも外す -->
+    <ui:VisualElement name="output-dock" class="dennoko-output">
+        <ui:VisualElement class="dennoko-output-row">
+            <ui:Label text="出力先" class="dennoko-output__label" />
+            <ui:TextField name="output-path" value="Assets" readonly="true" class="dennoko-field-readonly" />
+            <ui:Button name="output-browse" text="選択…" class="dennoko-output__action" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+
+    <!-- フッター: カードで囲まず上罫線だけで仕切る (出力ドックの直後は joined 修飾クラスで罫線を重ねない)。
+         左に固定幅の Secondary、右に伸びる Primary (画面に 1 つ)。件数などは .dennoko-footer__info を左端に置く -->
+    <ui:VisualElement class="dennoko-footer dennoko-footer--joined">
         <ui:Button name="reset-all-button" text="Reset All" class="dennoko-button-secondary" />
         <ui:Button name="apply-button" text="Apply &amp; Save" class="dennoko-button-primary" />
     </ui:VisualElement>
 
-    <!-- ステータスバー -->
+    <!-- ステータスバー: 文言と状態は DennokoStatus で切り替える (子要素を足さない) -->
     <ui:Label name="status-label" text="Ready" class="dennoko-status" />
 
 </ui:UXML>

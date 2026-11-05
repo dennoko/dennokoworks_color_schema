@@ -19,16 +19,16 @@ Unity 側の実体は `assets/DennokoTheme.uss` の `.dennoko-root` に定義さ
 > 使い分けの要点: 「入力する場所は沈める (level0)、押す・選ぶものは浮かせる (level2)」。
 > 同じトーンにすると、クリック対象か入力対象かが見分けられなくなります。
 
-### `theme.outline` (`#484848`) / `theme.outlineHover` (`#5e5e5e`)
-境界線やセパレーター。非常に低コントラストなグレーを使用し、要素を区切りつつも目立たせません。
-沈めた入力欄のホバーは背景色ではなく、枠線を `outlineHover` に明るくして示します。
+### `theme.outlineSubtle` (`#2b2b2b`) / `theme.outline` (`#3d3d3d`) / `theme.outlineHover` (`#5a5a5a`)
+境界線やセパレーター。静的な構造線（カード枠・セパレーター・沈めた入力欄の通常枠）にはより控えめな `outlineSubtle` (`#2b2b2b`) を、ボタンや選択欄など浮かせた操作要素の枠には `outline` (`#3d3d3d`) を使用してワイヤーフレーム感を解消します。
+沈めた入力欄のホバーやスライダートラックには、視認性を高めた `outlineHover` (`#5a5a5a`) を使用します。
 
 ### `theme.typography` (タイポグラフィ)
 情報の階層化を明確にするために文字色を分けています。
 
-*   **`primary` (`#ffffff`)**: 最も重要な情報（タイトルや見出し）。
-*   **`secondary` (`#cccccc`)**: 少し明度を落としたグレー。説明文や通常テキスト。
-*   **`tertiary` (`#aaaaaa`)**: さらに暗いグレー。補足情報、メタデータ、キャプション、読み取り専用の値。
+*   **`primary` (`#ffffff`)**: 最も重要な情報（タイトルや見出し、入力値）。
+*   **`secondary` (`#c4c4c4`)**: 少し明度を落としたグレー。説明文や通常ラベル。
+*   **`tertiary` (`#8e8e8e`)**: さらに一歩引いたグレー。補足情報、メタデータ、キャプション、サブラベル (X/Y/Z/W、Center/Extents)。
 *   **`disabled` (`#555555`)**: 操作不能であることを示す文字色。無効状態はすべてのコンポーネントでこの色に統一します。
 
 ### `theme.semantic` (セマンティック・カラー)
@@ -74,7 +74,7 @@ semantic 色を暗背景に馴染ませた派生色です。
 | JSON | USS 変数 |
 |---|---|
 | `surface.level0`〜`level3` | `--dennoko-surface-0`〜`--dennoko-surface-3` |
-| `outline` / `outlineHover` | `--dennoko-outline` / `--dennoko-outline-hover` |
+| `outlineSubtle` / `outline` / `outlineHover` | `--dennoko-outline-subtle` / `--dennoko-outline` / `--dennoko-outline-hover` |
 | `typography.*` | `--dennoko-text-primary` / `-secondary` / `-tertiary` / `-disabled` |
 | `semantic.*` | `--dennoko-semantic-error` / `-error-text` / `-warning` / `-success` / `-info` |
 | `interaction.*` | `--dennoko-accent` / `--dennoko-checkmark` / `--dennoko-hover-overlay` |

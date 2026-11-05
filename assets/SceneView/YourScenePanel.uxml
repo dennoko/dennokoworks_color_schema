@@ -1,0 +1,70 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- S2 シーンツールパネル。Unity の Overlay (パネル表示) の中身 (YourScenePanel.cs)。
+         置くのは「作業中に変える値」と「終了」だけ。幅 240px、行は 8 行まで。
+         見出し・ドラッグ・折りたたみは Unity の Overlay が描くので、ここには書かない -->
+    <ui:VisualElement name="panel" class="dennoko-scene-panel">
+
+        <!-- セッション行: ● 編集中 対象名 [✕] -->
+        <ui:VisualElement class="dennoko-scene-panel__session">
+            <ui:VisualElement class="dennoko-session-dot" />
+            <ui:Label text="編集中" class="dennoko-scene-panel__state" />
+            <ui:Label name="session-target" text="" tooltip="クリックで対象に合わせる" class="dennoko-scene-panel__target" />
+            <ui:Button name="session-end" class="dennoko-icon-button dennoko-icon-button--small" />
+        </ui:VisualElement>
+
+        <!-- コンパクトスライダー (ラベル 44px + スライダー + 数値欄 48px) と選択肢グループ -->
+        <ui:VisualElement name="group-brush">
+            <ui:VisualElement class="dennoko-scene-row">
+                <ui:Label text="半径" class="dennoko-scene-row__label" />
+                <ui:Slider name="radius-slider" low-value="0.01" high-value="0.3" />
+                <ui:FloatField name="radius-field" class="dennoko-scene-row__value" />
+            </ui:VisualElement>
+            <ui:VisualElement class="dennoko-scene-row">
+                <ui:Label text="減衰" class="dennoko-scene-row__label" />
+                <ui:VisualElement name="falloff-group" class="dennoko-segmented dennoko-choice-group">
+                    <ui:Button text="滑らか" />
+                    <ui:Button text="直線" />
+                    <ui:Button text="鋭い" />
+                    <ui:Button text="一定" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="dennoko-scene-row">
+                <ui:Label text="ミラー" class="dennoko-scene-row__label" />
+                <ui:VisualElement name="mirror-group" class="dennoko-segmented dennoko-choice-group">
+                    <ui:Button text="なし" />
+                    <ui:Button text="X" />
+                    <ui:Button text="Y" />
+                    <ui:Button text="Z" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- 小見出し (まとまりが 2 つ以上あるときだけ) + 右端の ↺。
+             1 回適用スライダー: ドラッグした量だけかけ、離すと確定して 0 に戻る。数値欄は出さず、ドラッグ中だけ % を出す -->
+        <ui:VisualElement name="group-effects">
+            <ui:VisualElement class="dennoko-scene-panel__section">
+                <ui:Label text="効果" class="dennoko-scene-panel__section-title" />
+                <ui:Button name="effects-reset" class="dennoko-icon-button dennoko-icon-button--small" />
+            </ui:VisualElement>
+            <ui:VisualElement class="dennoko-scene-row">
+                <ui:Label text="滑らか" class="dennoko-scene-row__label" />
+                <ui:Slider name="effect-smooth" low-value="0" high-value="1" />
+                <ui:Label name="effect-smooth-percent" class="dennoko-scene-row__percent" />
+            </ui:VisualElement>
+            <ui:VisualElement class="dennoko-scene-row">
+                <ui:Label text="平坦化" class="dennoko-scene-row__label" />
+                <ui:Slider name="effect-flatten" low-value="0" high-value="1" />
+                <ui:Label name="effect-flatten-percent" class="dennoko-scene-row__percent" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- キーヒント (常設は 2 組まで。C# で足す) -->
+        <ui:VisualElement name="keyhints" class="dennoko-keyhints" />
+
+        <!-- 警告行 (必要なときだけ。30 字まで。全文はツールチップ) -->
+        <ui:VisualElement name="warning" class="dennoko-scene-panel__warning">
+            <ui:VisualElement name="warning-icon" class="dennoko-icon" />
+            <ui:Label name="warning-text" text="" class="dennoko-scene-panel__warning-text" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

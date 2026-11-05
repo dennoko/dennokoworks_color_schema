@@ -42,12 +42,10 @@ Unity の `InspectorElement` が持つ左右余白のぶん、`.dennoko-root` �
 `PropertyField` は内部で標準の `TextField` / `FloatField` / `Toggle` 等を生成するため、
 テーマ USS のオーバーライドがそのまま適用される。個別のスタイル指定は不要。
 
-> **要実機確認:** テーマ USS はラベル列を `min-width: 150px` で揃えている
-> （`.dennoko-root .unity-base-field > .unity-base-field__label`。EditorWindow で検証済み）。
+> **コンパクトメトリクス:** テーマ USS はラベル列をコンパクトに揃えている
+> （`min-width: 100px; width: 30%; max-width: 128px;`、`.dennoko-root .unity-base-field > .unity-base-field__label`。EditorWindow / Inspector で検証済み）。
 > Inspector の PropertyField は Unity がラベル幅を自動計算する（aligned field）ため、
-> 幅の狭い Inspector でラベルが広すぎる・入力欄が窮屈になる場合は、
-> プロジェクト側で `.dennoko-root.dennoko-inspector-root .unity-base-field > .unity-base-field__label`
-> の `min-width` を小さくする。
+> 幅の狭い Inspector でも右側の入力欄やスライダーが窮屈になりにくい設計となっています。
 
 ### 3. `Bind()` を忘れない
 
@@ -55,13 +53,10 @@ Unity の `InspectorElement` が持つ左右余白のぶん、`.dennoko-root` �
 `container.Bind(serializedObject)` を必ず呼ぶこと。
 値の変更・Undo・複数選択 (`CanEditMultipleObjects`) はバインディングが自動処理する。
 
-### 4. ボタンサイズはインスペクター向けに小さく
+### 4. ボタンサイズ
 
-`dennoko-button-primary` (34px) が大きすぎる場合はインライン style か専用クラスで詰める。
-
-```xml
-<ui:Button text="Apply" class="dennoko-button-primary" style="height: 30px;" />
-```
+テーマ USS では標準ボタンが `22px`、`dennoko-button-primary` が `28px` のコンパクト設計になっています。
+インスペクター向けにさらに小型化したい場合はインライン style か専用クラス（例: `height: 20px; font-size: 10px;`）で調整してください。
 
 ### 5. 複数の CustomEditor が衝突する場合
 

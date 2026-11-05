@@ -6,12 +6,13 @@
       "level2": "#2c2c2c",
       "level3": "#383838"
     },
-    "outline": "#484848",
-    "outlineHover": "#5e5e5e",
+    "outlineSubtle": "#2b2b2b",
+    "outline": "#3d3d3d",
+    "outlineHover": "#5a5a5a",
     "typography": {
       "primary": "#ffffff",
-      "secondary": "#cccccc",
-      "tertiary": "#aaaaaa",
+      "secondary": "#c4c4c4",
+      "tertiary": "#8e8e8e",
       "disabled": "#555555"
     },
     "semantic": {

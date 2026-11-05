@@ -9,17 +9,19 @@ namespace YourNamespace   // ← 変更する
         // 配置した UXML / USS の .meta ファイルに記載されている GUID を設定する
         private const string UXML_GUID = "YOUR_UXML_GUID_HERE";
         private const string USS_GUID  = "YOUR_USS_GUID_HERE";
+        // 大きい単位のブロック (blocks/README.md) を使う場合だけ設定する。空なら読まない
+        private const string BLOCKS_USS_GUID = "";
 
-        public enum StatusType { Info, Success, Error }
+        private const string ToolName = "Your Tool Name";   // ← 変更する
 
-        private Label _statusLabel;
-        private IVisualElementScheduledItem _statusResetSchedule;
+        private DennokoStatus _status;
+        private DennokoAppBar _appBar;
 
         [MenuItem("Tools/Your Tool Name")]   // ← メニューパスを変更する
         public static void ShowWindow()
         {
             var window = GetWindow<YourEditorWindow>();
-            window.titleContent = new GUIContent("Your Tool Name");
+            window.titleContent = new GUIContent(ToolName);
             window.minSize = new Vector2(400, 600);
         }
 
@@ -39,19 +41,9 @@ namespace YourNamespace   // ← 変更する
             // ⚠ ここで FontAsset を直接生成しないこと（troubleshooting.md §8〜§10）。
             DennokoUIFont.Apply(root);
 
-            // USS のロードと適用
-            string ussPath = AssetDatabase.GUIDToAssetPath(USS_GUID);
-            var uss = string.IsNullOrEmpty(ussPath)
-                ? null
-                : AssetDatabase.LoadAssetAtPath<StyleSheet>(ussPath);
-            if (uss != null)
-            {
-                root.styleSheets.Add(uss);
-            }
-            else
-            {
-                Debug.LogWarning($"[{nameof(YourEditorWindow)}] USS が見つかりません。GUID を確認してください: {USS_GUID}");
-            }
+            // USS のロードと適用 (テーマ → ブロックの順。後に足したものが同じ詳細度で勝つ)
+            AddStyleSheet(root, USS_GUID);
+            if (!string.IsNullOrEmpty(BLOCKS_USS_GUID)) AddStyleSheet(root, BLOCKS_USS_GUID);
 
             // UXML のロードとインスタンス化
             string uxmlPath = AssetDatabase.GUIDToAssetPath(UXML_GUID);
@@ -68,11 +60,35 @@ namespace YourNamespace   // ← 変更する
             InitializeUI(root);
         }
 
+        private static void AddStyleSheet(VisualElement root, string guid)
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            var uss = string.IsNullOrEmpty(path) ? null : AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
+            if (uss != null) root.styleSheets.Add(uss);
+            else Debug.LogWarning($"[{nameof(YourEditorWindow)}] USS が見つかりません。GUID を確認してください: {guid}");
+        }
+
         // ─── バインディング ─────────────────────────────────────────────
 
         private void InitializeUI(VisualElement root)
         {
-            _statusLabel = root.Q<Label>("status-label");
+            // 標準フッターのステータスバー
+            _status = new DennokoStatus(root.Q<Label>("status-label"));
+
+            // 標準ヘッダー (トップバー)。使わない要素は UXML から消せば無視される
+            _appBar = new DennokoAppBar(root, ToolName)
+            {
+                ManualUrl  = "https://example.com/manual",     // ← 変更する
+                ReleaseUrl = "https://example.com/releases",   // ← 変更する
+                ResetAll   = ResetAll,
+                AddToolMenuItems = menu =>
+                {
+                    // ツール固有の項目 (⋮ の上段)。無ければ何もしない
+                },
+            };
+            _appBar.LanguageChanged += english => { /* TODO: 文言を切り替える */ };
+            // バージョンチェックを付ける場合 (references/version-check-guide.md):
+            //   _appBar.CheckUpdateRequested += () => { YourToolVersion.ForceRecheck(); LoadVersionResultFromSessionState(); };
 
             // トグル付きセクション: トグル OFF でセクションを折りたたむ
             BindToggleSection(root,
@@ -84,6 +100,24 @@ namespace YourNamespace   // ← 変更する
                     root.Q<Slider>("hue-slider").value = 0f;
                     root.Q<Slider>("sat-slider").value = 1f;
                 });
+
+            // 出力ドック (使わない場合は UXML の output-dock ごと消し、この行も消す)
+            var outputPath = root.Q<TextField>("output-path");
+            var browse = root.Q<Button>("output-browse");
+            if (browse != null && outputPath != null)
+            {
+                browse.clicked += () =>
+                {
+                    string picked = EditorUtility.OpenFolderPanel("出力先", outputPath.value, string.Empty);
+                    if (string.IsNullOrEmpty(picked)) return;
+                    if (!picked.StartsWith(Application.dataPath))
+                    {
+                        _status.Set("プロジェクトの Assets 内を選んでください", DennokoStatusType.Warning);
+                        return;
+                    }
+                    outputPath.value = "Assets" + picked.Substring(Application.dataPath.Length);
+                };
+            }
 
             root.Q<Button>("apply-button").clicked += ApplyAndSave;
             root.Q<Button>("reset-all-button").clicked += ResetAll;
@@ -113,38 +147,18 @@ namespace YourNamespace   // ← 変更する
                 reset.clicked += () => onReset();
         }
 
-        // ─── ステータスバー ─────────────────────────────────────────────
-
-        /// <summary>ステータスを表示する。Success / Error は 3 秒後に Ready へ自動復帰。</summary>
-        private void SetStatus(string message, StatusType type, long autoResetMs = 3000)
-        {
-            if (_statusLabel == null) return; // UXML ロード失敗時・要素名変更時の NRE 防止
-
-            _statusLabel.text = message;
-            _statusLabel.EnableInClassList("dennoko-status--success", type == StatusType.Success);
-            _statusLabel.EnableInClassList("dennoko-status--error",   type == StatusType.Error);
-
-            _statusResetSchedule?.Pause();
-            if (type != StatusType.Info)
-            {
-                _statusResetSchedule = _statusLabel.schedule
-                    .Execute(() => SetStatus("Ready", StatusType.Info))
-                    .StartingIn(autoResetMs);
-            }
-        }
-
         // ─── アクション ─────────────────────────────────────────────────
 
         private void ApplyAndSave()
         {
             // TODO: 実装する
-            SetStatus("Saved.", StatusType.Success);
+            _status.Set("Saved.", DennokoStatusType.Success);
         }
 
         private void ResetAll()
         {
             // TODO: 実装する
-            SetStatus("Reset.", StatusType.Info);
+            _status.Set("Reset.");
         }
     }
 }

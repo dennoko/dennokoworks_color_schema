@@ -36,6 +36,10 @@
 | 無効状態のトーンがコンポーネントごとにばらばら | `:disabled` の色を統一していない / `opacity` の掛け算 | §14 |
 | ListView の交互行が選択中・ホバー中に見える | 交互行の明度差が大きすぎる | §15 |
 | 2 カラムのグリッドで右列の開始位置が行ごとにずれる / カードがスクロールバーの下にはみ出す | `width: 50%` の子に `min-width` を付け、コンテンツ幅が広がっている | §16 |
+| スライダーのトラックとつまみが下にずれる（掴んだときの青い輪は正しい高さ） | Unity 2022.3 の既定 `top: 6px` とテーマの `margin-top` が足し算になる | §12-③ |
+| ステータスバーが文字の無い細い帯（8px）に潰れる | Label に子要素（進捗バーなど）を足した | §17 |
+| 横並びの行に置いた選択肢ボタン（Segmented）が文字の入らない幅に潰れる | ボタンが `flex-basis: 0` で、グループに伸びる指定が無い | §18 |
+| UXML が読み込めない（XML のエラー） | コメントの中に `--`（`.dennoko-footer--joined` など）を書いた | §19 |
 
 ## 1. スタイルが全く適用されない
 
@@ -151,7 +155,7 @@ Toggle の入力コンテナ `.unity-toggle__input` は `.unity-base-field__inpu
 なお `Toggle(label)` コンストラクタで作った場合、文字は `__input` の外側
 （`.unity-base-field__label`）に出るためこの問題は起きない。囲みが出るのは
 `Toggle.text` / UXML の `text=` を使ったときだけ。
-（それでも Toggle は `text=` で書くのが原則。`label=` はラベル列 150px の 2 カラムになり、
+（それでも Toggle は `text=` で書くのが原則。`label=` は左ラベル列（100px〜30%）の 2 カラムになり、
 `text=` のトグルと混在すると左右が逆転して見える）
 
 ### ③ ON / OFF が見分けられない・ラジオボタンが箱で囲まれる
@@ -462,20 +466,31 @@ FloatField」の 3 段なので三重枠になる。テーマ USS §③-b で**�
 }
 ```
 
-サブフィールドは `.unity-composite-field__field` に `flex-grow: 1; flex-shrink: 1; flex-basis: 0` を付けて
-均等割りにし、ラベル→数値の間は 3px、ペア同士の間は 8px（`--first` のみ 0）にしてグルーピングを明確にする。
+サブフィールドは `.unity-composite-field__field` に `flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0;` を付けて
+均等割りにし、サブラベル (X/Y/Z) は 10px + Tertiary 色、入力欄との余白を 2px に詰めて数値の視認領域を最大化する。
 
 ### ② BoundsField の Center / Extents が X と重なる
 
 BoundsField はラベルが上段に出る構造なので、テーマ USS では `flex-direction: row` にして他の
-フィールドと同じ 2 カラムに揃え、Center / Extents のラベル幅を 48px に固定している。
+フィールドと同じ 2 カラムに揃え、Center / Extents のラベル幅を 44px に固定している。
 ⚠ 固定幅にするだけだと、ビルトイン USS の `padding-left` / `margin` が残って固定幅の中が空白で埋まり、
 文字が右へはみ出して X ラベルと重なる（`CXen` / `EXxte` のように見える）。padding / margin を
-すべて明示的に 0 にすること。あわせて 2 行の間に `margin-bottom: 3px`、メインラベルに
-`padding-top: 6px`（1 段目のベースラインに揃える）を指定している。
+すべて明示的に 0 にすること。メインラベルは `align-self: flex-start; height: 20px; -unity-text-align: middle-left;` で
+1 段目の入力行の中心軸と揃える。
 
-## 12. Slider が入力欄のような枠で囲まれる
+### ③ タブ幅を狭めると右側が切れる / Vector2・Rect が右端まで届かない
 
+Unity ビルトインの `.unity-composite-field` では、以下の 2 点により幅の伸縮が破綻する：
+1. **右端の見切れ**: 親の `__input` にビルトインで `flex: 1 0 auto` が掛かっており、縮小に抵抗する。
+   `.unity-composite-field > .unity-base-field__input` および末端の `.unity-composite-field__field > .unity-base-field__input` に
+   `flex-grow: 1; flex-shrink: 1; flex-basis: 0; min-width: 0; width: 0;` を明示して親コンテナの横幅に追従させる。
+2. **2 要素フィールドの余白**: `Vector2Field` / `Vector2IntField` / `RectField` には 3 列目合わせ用の
+   ダミースペーサー（`.unity-composite-field__field-spacer`）が自動挿入され、右 1/3 が無駄な空白になる。
+   `.dennoko-root .unity-composite-field__field-spacer { display: none; }` で消すことで全幅へ均等に広がる。
+
+## 12. Slider の視認性とレイアウト
+
+### ① 入力欄のような枠で囲まれる
 Slider / MinMaxSlider の `__input` も `.unity-base-field__input` なので、§③の装飾が乗ると
 レール全体が枠で囲まれ、右端の数値入力欄と二重枠になる。数値入力欄の有無で行の高さも揃わない。
 スライダーは文字入力欄ではないので、`.unity-base-slider > .unity-base-field__input` の背景と枠を
@@ -483,6 +498,36 @@ Slider / MinMaxSlider の `__input` も `.unity-base-field__input` なので、�
 
 ⚠ スクロールバーも内部に Slider を持つため、Slider 用の `min-height` などがスクロールバーに
 波及しないよう `.unity-scroller .unity-base-slider` で打ち消している。
+
+### ② スライダーの棒（トラック）が見えない
+ビルトインのトラックバーは暗背景ではほぼ視認できない極細の線である。
+テーマ USS ではトラックバー（`.unity-base-slider__tracker`）に 4px の高視認性カラー（`--dennoko-outline-hover: #5a5a5a`）を
+与え、`margin-top: 7px;`（ドラッグコンテナ 18px の中心軸 9px に合わせる）でつまみ（10px 正円）と垂直中心を一致させている。
+
+### ③ トラックとつまみが下にずれる（掴んだときの青い輪は正しい高さ）
+Unity 2022.3 の既定 USS では、横スライダーの
+
+- トラック（`__tracker`）が `position: relative` + **`top: 6px`**（見た目だけ下へずらす）
+- つまみ（`__dragger`）がトラックの**下に続けて並ぶ** relative 配置（既定 `margin-top: -2px`）
+- 掴んだときの青い輪（`__dragger-border`、18px）は absolute で drag-container の上端
+
+になっている。テーマで `margin-top: 7px` を足すと既定の `top: 6px` と足し算になり、トラックの中心が 15px 付近まで下がる。
+つまみもトラックの下端から並ぶので一緒に下がり、青い輪だけが正しい高さ（中心 9px）に出る。
+
+テーマ USS §⑥ では次の 3 つで中心を 9px に揃えている（実測：トラック 7〜11px、つまみ 4〜14px、青い輪 0〜18px）。
+
+```css
+.dennoko-root .unity-base-slider--horizontal .unity-base-slider__tracker { top: 0; height: 4px; margin-top: 7px; }
+.dennoko-root .unity-base-slider--horizontal .unity-base-slider__dragger { margin-top: -7px; }   /* 11 − 7 = 4 */
+.dennoko-root .unity-base-slider--horizontal .unity-base-slider__drag-container { height: 18px; } /* 行の中心に置く */
+```
+
+- drag-container は中身の高さに縮む（上の指定だと 14px）ので、高さを 18px に固定しないと行の中心より 2px 下に寄る。
+- 縦スライダーのトラックは absolute（既定 `left: 4px`）なので、`left: 0; margin-left: 3px` でつまみの中心（5px）に揃える。
+- MinMaxSlider のトラックにも既定 `top: 6px` があるので `top: 0` にする（つまみは absolute で中心 9px のまま）。
+- スクロールバーの中の Slider には `.unity-scroller .unity-base-slider__dragger { margin: 0; }` で波及を打ち消す。
+- 既定の値は Unity のバージョンで変わる。ずれたら UI Toolkit Debugger で `__tracker` / `__dragger` / `__dragger-border` の
+  layout を見比べる。
 
 ## 13. Elevation と文字色のコントラスト
 
@@ -522,6 +567,32 @@ Unity 既定の交互行は明度差が大きく、交互行がすべて選択�
 ビューポートより広がってカードがスクロールバーの下に潜り込んだりする。
 `width: 50%; max-width: 50%; flex-basis: 50%; flex-grow: 0; flex-shrink: 0;` で幅を固定し、
 `min-width` は付けず、はみ出す文字は `overflow: hidden; text-overflow: ellipsis; white-space: nowrap` で省略する。
+
+## 17. ステータスバーが細い帯に潰れる（Label に子要素を足した）
+
+UI Toolkit の Label（TextElement）は、子要素を持つと文字の大きさを測らなくなる（レイアウト上は子を並べる箱として扱われる）。
+進捗バーなどを `label.Add(child)` すると、子が absolute でも Label の高さは padding だけ（ステータスバーなら 8px）になり、
+固定高さの枠の中では文字が見えない細い帯に潰れる。
+
+- ステータスバーの進捗線は `DennokoStatus`（`assets/Shared/`）が `generateVisualContent` で Label 自身に描く。子要素は足さない。
+- どうしても子要素が必要なら、Label を VisualElement で包み、子要素はその VisualElement に足す。
+
+## 18. 横並びの行に置いた Segmented のボタンが潰れる
+
+`.dennoko-segmented` のボタンは等幅にするため `flex-grow: 1; flex-basis: 0` になっている。
+グループ自体に伸びる指定が無い横並びの行（出力ドックの「形式 [PNG][TGA]」など）に置くと、
+グループの幅が「ボタンの基準幅 0 の合計」= padding だけになり、ボタンが文字の入らない幅（14px など）に潰れる。
+
+- 幅いっぱいに伸ばしてよい行：グループに `flex-grow: 1; flex-shrink: 1; min-width: 0` を付ける（`.dennoko-field-row > .dennoko-segmented` は設定済み）。
+- 文字の幅で並べたい行：ボタンを `flex-grow: 0; flex-basis: auto; min-width: 40px`、グループを `flex-shrink: 0` にする
+  （出力ドックの `.dennoko-output-row > .dennoko-segmented` はテーマで設定済み）。
+- 縦に並べる親（カードの直下など）では横幅いっぱいに伸びるので問題にならない。
+
+## 19. UXML のコメントに `--` を書くと読み込めない
+
+XML のコメント `<!-- ... -->` の中には `--` を書けない。BEM の修飾クラス（`.dennoko-footer--joined`）や
+USS 変数（`--dennoko-surface-0`）をそのままコメントに書くと、UXML 全体が XML として壊れて読み込めない。
+コメントでは「joined 修飾クラス」のように言い換える（`class="..."` 属性の中に書くのは問題ない）。
 
 ## 動作確認チェックリスト（実装完了時に必ず実施）
 

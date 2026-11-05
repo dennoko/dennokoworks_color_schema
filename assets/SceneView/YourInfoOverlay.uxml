@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <!-- S6 情報オーバーレイ。大きい数値 1 つ + 補足 1 行。操作は置かない (読み取り専用)。
+         段階の色は info-overlay の good / warn / bad 修飾クラス (文字色だけに semantic 色を使う) -->
+    <ui:VisualElement name="info" class="dennoko-info-overlay">
+        <ui:Label name="info-value" text="—" class="dennoko-info-overlay__value" />
+        <ui:Label name="info-sub" text="" class="dennoko-info-overlay__sub" />
+    </ui:VisualElement>
+</ui:UXML>

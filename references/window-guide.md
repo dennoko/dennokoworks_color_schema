@@ -5,10 +5,13 @@
 
 ## ウィンドウ全体のレイアウト構成
 
+画面の中身（どのカードをどの順に置くか）は画面パターンで決める（`blocks/patterns.md`）。
+どのパターンでも、**上下は標準ヘッダー・標準フッターに固定する**。
+
 ```
 ┌──────────────────────────────────────┐
-│ [ウィンドウタイトル]          [JA][EN] │  ← .dennoko-header (flex-shrink: 0)
-│ ──────────────────────────────────── │  ← .dennoko-separator
+│ Tool Name  v1.2.0 ↻         EN ? ⋮  │  ← 標準ヘッダー: .dennoko-appbar (flex-shrink: 0)
+├──────────────────────────────────────┤
 │ ┌──────────────────────────────────┐ │
 │ │ SECTION TITLE                    │ │  ← .dennoko-card
 │ │ ────────────────────────────     │ │     + .dennoko-card-header
@@ -18,15 +21,16 @@
 │ │ [☑] TOGGLE SECTION     [Reset]   │ │  ← .dennoko-toggle-header
 │ │  [スライダーなど]                 │ │  ← .dennoko-toggle-section__content
 │ └──────────────────────────────────┘ │     (トグル OFF で折りたたまれる)
-│ ──────────────────────────────────── │  ← .dennoko-footer の上罫線
-│ [Reset All] [  Apply & Save (白)  ]  │  ← .dennoko-footer (カードで囲まない)
-│ [ステータスメッセージ]                │  ← .dennoko-status (枠線なし)
+├──────────────────────────────────────┤  ← 出力ドックの上罫線
+│ 出力先 [Assets/...        ] [選択…] │  ← 出力ドック: .dennoko-output (任意・2 行まで)
+│ [Reset All] [  Apply & Save (白)  ]  │  ← フッター: .dennoko-footer--joined (カードで囲まない)
+│ [ステータスメッセージ]                │  ← ステータス: .dennoko-status (枠線なし)
 └──────────────────────────────────────┘
 ```
 
 > 枠線は最小限にする。フッターを `.dennoko-card` で囲んだり、フッターの上に
 > `.dennoko-separator` を足したりすると、区切り線・カード枠・ボタン枠・ステータスバー枠が
-> 何重にも重なって下部が重く見える。
+> 何重にも重なって下部が重く見える。出力ドックの直後のフッターは `--joined` で罫線を重ねない。
 
 ## 配置手順
 
@@ -36,12 +40,15 @@ Editor/
 │   ├─ DennokoTheme.uss        ← assets/DennokoTheme.uss をコピー
 │   └─ YourEditorWindow.uxml   ← assets/EditorWindow/ からコピー
 ├─ DennokoUIFont.cs            ← assets/Shared/ からコピー（フォント管理・共通）
+├─ DennokoAppBar.cs            ← assets/Shared/ からコピー（標準ヘッダー）
+├─ DennokoStatus.cs            ← assets/Shared/ からコピー（ステータスバー）
+├─ DennokoIcons.cs             ← assets/Shared/ からコピー（アイコンボタン）
 └─ YourEditorWindow.cs         ← assets/EditorWindow/ からコピー
 ```
 
-1. 上記 4 ファイルをコピーして配置する
-2. C# の変更箇所: `namespace` / クラス名 / `[MenuItem("Tools/Your Tool Name")]`
-   - `DennokoUIFont.cs` も `namespace` を合わせる。Inspector も作る場合、このファイルは
+1. 上記 7 ファイルをコピーして配置する（Shared の 4 つはプロジェクトに 1 組だけ置き、Window / Inspector で共有する）
+2. C# の変更箇所: `namespace` / クラス名 / `[MenuItem("Tools/Your Tool Name")]` / `ToolName` / `ManualUrl` / `ReleaseUrl`
+   - Shared の 4 ファイルも `namespace` を合わせる。Inspector も作る場合、このファイルは
      **プロジェクト内に 1 つだけ**置いて共有する（重複配置はコンパイルエラー）
    - `DennokoUIFont.WarmupJapanese` にツールの UI で使う日本語を書き足す
      （実行中のアトラス追加＝文字化けの原因を減らす。`references/troubleshooting.md` §10）
@@ -51,28 +58,42 @@ Editor/
    C# の `UXML_GUID` / `USS_GUID` 定数に設定する（プレースホルダーのままにしない）
    - GUID の調べ方: `.meta` の `guid:` 行、または Project ビュー右クリック → Copy GUID
 
-## ヘッダーの構成パターン
+## 標準ヘッダー（トップバー）
 
-**標準ヘッダー（タイトルのみ）**
-```xml
-<ui:VisualElement class="dennoko-header">
-    <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
-</ui:VisualElement>
-<ui:VisualElement class="dennoko-separator" />
+```
+┌ Tool Name  v1.2.0 ↻                    EN  ?  ⋮ ┐
+   appbar-title / version-label / version-reload-button   appbar-lang / appbar-manual / appbar-settings
 ```
 
-**バージョン表記 + リロードボタン付きヘッダー（推奨）**
-（C# 側の実装は `references/version-check-guide.md` を参照）
 ```xml
-<ui:VisualElement class="dennoko-header">
-    <ui:VisualElement class="dennoko-header-titlegroup">
-        <ui:Label text="YOUR TOOL NAME" class="dennoko-title" />
+<ui:VisualElement name="appbar" class="dennoko-appbar">
+    <ui:VisualElement class="dennoko-appbar__title">
+        <ui:Label name="appbar-title" text="YOUR TOOL NAME" class="dennoko-title" />
         <ui:Label name="version-label" text="" class="dennoko-version-label" />
-        <ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
+        <ui:Button name="version-reload-button" class="dennoko-icon-button" />
+    </ui:VisualElement>
+    <ui:VisualElement class="dennoko-appbar__actions">
+        <ui:Button name="appbar-lang" text="EN" class="dennoko-appbar-lang" />
+        <ui:Button name="appbar-manual" class="dennoko-icon-button" />
+        <ui:Button name="appbar-settings" class="dennoko-icon-button" />
     </ui:VisualElement>
 </ui:VisualElement>
-<ui:VisualElement class="dennoko-separator" />
 ```
+
+| 要素 | 決まり |
+| --- | --- |
+| ツール名 | `.dennoko-title`（13px 太字）。ウィンドウが狭いときはツール名だけが省略表示になり、右側のアイコンは縮まない |
+| バージョン + ↻ | 文言と状態クラスは `references/version-check-guide.md` の `ApplyVersionLabel` が入れる。更新ありのときだけラベルをクリックで配布ページを開く（`DennokoAppBar.ReleaseUrl`） |
+| 言語 | **切り替え先**の言語を出す文字ボタン 1 つ（日本語表示中は `EN`）。切り替えないツールは消す |
+| マニュアル `?` | `DennokoAppBar.ManualUrl` を開く |
+| 設定 `⋮` | メニューは「ツール固有の項目（`AddToolMenuItems`）→ 区切り → 設定を初期値に戻す…（確認あり）/ 更新を確認 / 配布ページを開く」 |
+
+- 下罫線（`--dennoko-outline-subtle`）でスクロール領域と仕切るので、`.dennoko-separator` は足さない。
+- アイコンは `DennokoAppBar` が `DennokoIcons` で付ける（Unity 組み込みの `d_Refresh` / `d__Help` / `d__Menu`。見つからなければ ↻ / ? / ⋮ の文字）。名前はツールチップに出す。
+- 要らない要素は UXML から消すだけでよい（`DennokoAppBar` は見つからない要素を無視する）。
+- タブ（`.dennoko-tabbar`）や作業中バナーは、トップバーの直下・スクロール領域の外に置く（`blocks/patterns.md`）。
+- Inspector では `.dennoko-appbar--compact`（ツール名を省いた細い版）を使う（`blocks/patterns.md` P5）。
+- 旧ヘッダー（`.dennoko-header` + `.dennoko-header-titlegroup` + `.dennoko-separator`）はテーマに残っているが、新しく作るときは使わない。
 
 ## セクションの追加パターン
 
@@ -126,7 +147,7 @@ C# で `BindToggleSection()`（テンプレートに定義済み）を 1 行呼�
 （テーマ USS の §④で打ち消し済み。テーマを改変したときに再発しやすい）。
 
 **Toggle は `text=` で書く** — `text=` は「左にチェックボックス、右に文字」の行になる。
-`label=` は「左ラベル列（150px）+ 右にチェックボックス」の 2 カラムになり、
+`label=` は「左ラベル列（100px〜30%）+ 右にチェックボックス」の 2 カラムになり、
 同じカードに混在すると左右が逆転してちぐはぐに見える。`label=` は他の入力欄と
 同じ列に揃えたい場合だけ使う。
 
@@ -171,28 +192,66 @@ C# で `BindToggleSection()`（テンプレートに定義済み）を 1 行呼�
 <ui:VisualElement class="dennoko-separator" />
 ```
 
-## フッター
+## 標準フッター
 
-カードで囲まず、`.dennoko-footer` の上罫線だけでスクロール領域と仕切る。
-ボタンは 1 行に並べ、**左に固定幅の Secondary（Reset All 等）、右に伸びる Primary（Apply 等）**を置く。
-主アクションと補助・破壊的アクションを同じ幅で上下に並べると、優先順位が伝わらず誤クリックも誘発する。
+スクロール領域の下に、**出力ドック（任意）→ フッター → ステータス**の順で固定する。
 
 ```xml
-<ui:VisualElement class="dennoko-footer">
+<!-- 出力ドック: 出力先など 2 行まで。出力しないツールは丸ごと消し、フッターの --joined も外す -->
+<ui:VisualElement name="output-dock" class="dennoko-output">
+    <ui:VisualElement class="dennoko-output-row">
+        <ui:Label text="出力先" class="dennoko-output__label" />
+        <ui:TextField name="output-path" value="Assets" readonly="true" class="dennoko-field-readonly" />
+        <ui:Button name="output-browse" text="選択…" class="dennoko-output__action" />
+    </ui:VisualElement>
+    <ui:VisualElement class="dennoko-output-row">
+        <ui:Label text="形式" class="dennoko-output__label" />
+        <ui:VisualElement name="output-format" class="dennoko-segmented dennoko-choice-group">
+            <ui:Button text="PNG" />
+            <ui:Button text="TGA" />
+        </ui:VisualElement>
+        <ui:VisualElement class="dennoko-spacer" />
+        <ui:Toggle name="output-overwrite" text="上書き" />
+    </ui:VisualElement>
+</ui:VisualElement>
+
+<ui:VisualElement class="dennoko-footer dennoko-footer--joined">
+    <ui:Label name="footer-info" text="12 件を変更" class="dennoko-footer__info" />   <!-- 任意 -->
     <ui:Button name="reset-all-button" text="Reset All" class="dennoko-button-secondary" />
     <ui:Button name="apply-button" text="Apply &amp; Save" class="dennoko-button-primary" />
 </ui:VisualElement>
+
+<ui:Label name="status-label" text="Ready" class="dennoko-status" />
 ```
 
-## ステータスバー
+**出力ドック** — 出力先・形式・上書きなど、出力の直前に確かめたい設定を 2 行まで常に見せる。
+3 行以上になるならスクロール領域の最後に出力カードを置き、ドックには要約チップだけを出す（`blocks/cards.md` B5）。
 
-UXML 末尾に `<ui:Label name="status-label" text="Ready" class="dennoko-status" />` を置き、
-C# の `SetStatus()` ヘルパー（テンプレートに定義済み）でクラスを切り替える。
+- 行は `.dennoko-output__label`（44px）+ 伸びる欄 + `.dennoko-output__action`（56px）。
+- 形式などの選択肢は `.dennoko-segmented.dennoko-choice-group` をそのまま置く。出力行の中では文字の幅で並ぶ
+  （テーマが `flex-basis: auto` に直している。等幅の `flex-basis: 0` のままだと伸びる親が無いので幅 0 に潰れる）。
+
+**フッター** — カードで囲まず、上罫線だけでスクロール領域と仕切る（出力ドックの直後は `--joined` で罫線を重ねない）。
+ボタンは 1 行に並べ、**左に固定幅の Secondary（Reset All 等）、右に伸びる Primary（Apply 等。最小 96px）**を置く。
+主アクションと補助・破壊的アクションを同じ幅で上下に並べると、優先順位が伝わらず誤クリックも誘発する。
+
+- 件数など状況を示す短い文字は左端の `.dennoko-footer__info`（最大 40%、省略表示）に置く。
+- Primary は画面に 1 つ。状態によって文言と処理を差し替える（「作業開始」→「出力」、「次へ」→「出力」）。
+
+**ステータス** — 最下段の 1 行。`DennokoStatus` で文言と状態を切り替える。
 
 ```csharp
-SetStatus("Saved.", StatusType.Success);   // .dennoko-status--success が付与され 3 秒後に Ready へ戻る
-SetStatus("Failed.", StatusType.Error);    // .dennoko-status--error
+_status = new DennokoStatus(root.Q<Label>("status-label"));
+_status.Set("Saved.", DennokoStatusType.Success);   // .dennoko-status--success。3 秒後に Ready へ戻る
+_status.Set("出力先がありません", DennokoStatusType.Warning);
+_status.Set("Failed.", DennokoStatusType.Error);
+_status.Set("ベイク中… 40%", DennokoStatusType.Busy, 0.4f);   // 下端に進捗線。自動では戻らない
+_status.Ready();
 ```
+
+- 通知は実行した場所に 1 か所だけ出す。ウィンドウから実行したらステータス、シーンから実行したらトースト（`blocks/sceneview.md` S4）。
+- ⚠ ステータスの Label に子要素（進捗バーなど）を足さない。Label は子要素があると文字の高さを測らなくなり、
+  上下の余白（8px）だけの高さに潰れる。進捗線は `DennokoStatus` が `generateVisualContent` で Label 自身に描く。
 
 ## 注意点
 

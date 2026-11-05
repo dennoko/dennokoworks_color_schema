@@ -1,6 +1,6 @@
 # トップバー バージョン表記 + GitHub アップデートチェック
 
-ヘッダー（`.dennoko-header`）にツールの現行バージョンを常時表示し、起動時に
+標準ヘッダー（トップバー `.dennoko-appbar`）にツールの現行バージョンを常時表示し、起動時に
 GitHub Public リポジトリ上の `version.json` を取得してローカル版と比較、
 更新があればテキストで示す。取得失敗はエラーハンドリングしてテキスト表示する。
 
@@ -12,7 +12,7 @@ GitHub Public リポジトリ上の `version.json` を取得してローカル�
 
 | レイヤー | 担当 |
 |---|---|
-| UXML | ヘッダー左側に「タイトル + バージョンラベル」を並べる（構造のみ） |
+| UXML | トップバー左側に「タイトル + バージョンラベル + ↻」を並べる（構造のみ。EditorWindow テンプレートに入っている） |
 | USS | `.dennoko-version-label`（+ `--update` / `--error`）— **テーマ USS に定義済み** |
 | C# | `DennokoVersionChecker`（自己完結・ローカライズ非依存）+ 表示側で状態→文言化 |
 
@@ -38,17 +38,15 @@ GitHub Public リポジトリ上の `version.json` を取得してローカル�
 
 ## Step 2 — ヘッダー UXML
 
-`version-label` の `text` は空で置き、C# から流し込む。
+標準ヘッダー（`assets/EditorWindow/YourEditorWindow.uxml` のトップバー）に `version-label` と
+`version-reload-button` が入っている。`version-label` の `text` は空で置き、C# から流し込む。
 
 ```xml
-<ui:VisualElement name="header" class="dennoko-header">
-    <ui:VisualElement class="dennoko-header-titlegroup">
-        <ui:Label name="title-label" text="YOUR TOOL NAME" class="dennoko-title" />
-        <ui:Label name="version-label" text="" class="dennoko-version-label" />
-    </ui:VisualElement>
-    <ui:Button name="lang-button" text="EN" />
+<ui:VisualElement class="dennoko-appbar__title">
+    <ui:Label name="appbar-title" text="YOUR TOOL NAME" class="dennoko-title" />
+    <ui:Label name="version-label" text="" class="dennoko-version-label" />
+    <ui:Button name="version-reload-button" class="dennoko-icon-button" />
 </ui:VisualElement>
-<ui:VisualElement class="dennoko-separator" />
 ```
 
 ## Step 3 — C# の配置とカスタマイズ
@@ -167,55 +165,23 @@ private void ApplyVersionLabel()
 
 ## Step 5 — 手動リロードボタン（任意・推奨）
 
-「取得できません」時にその場で再試行できる ↻ ボタンを version-label の右に置く。
+「取得できません」時にその場で再試行できる ↻ ボタンを version-label の右に置く（標準ヘッダーには最初から入っている）。
+アイコン（`d_Refresh`、無ければ ↻ の文字）とツールチップは `DennokoAppBar` が付ける。
+↻ と ⋮ メニューの「更新を確認」はどちらも `DennokoAppBar.CheckUpdateRequested` を出すので、そこに再確認をつなぐ。
 
-**UXML**（titlegroup 内、`version-label` の直後）:
-```xml
-<ui:Button name="version-reload-button" text="↻" class="dennoko-version-reload-button" />
-```
-
-**USS**（`DennokoTheme.uss` に定義済み。独自スタイルを追加・改変する場合は `.dennoko-root` 前置規約に従う）:
-```css
-/* 20px 角のアイコンボタン。通常時は枠を見せず、ホバーで枠と背景を出してクリック領域を示す。
-   汎用ボタンの min-height (26px) を打ち消す */
-.dennoko-root .dennoko-version-reload-button {
-    width: 20px;
-    height: 20px;
-    min-height: 0;
-    margin: 0 0 0 4px;
-    padding: 0;
-    font-size: 13px;
-    -unity-text-align: middle-center;
-    color: var(--dennoko-text-tertiary);
-    background-color: transparent;
-    border-width: 1px;
-    border-color: transparent;
-    border-radius: 4px;
-}
-.dennoko-root .dennoko-version-reload-button:hover {
-    color: var(--dennoko-text-primary);
-    background-color: var(--dennoko-surface-2);
-    border-color: var(--dennoko-outline);
-}
-```
-
-**配線**（`YourToolVersion.ForceRecheck()` はテンプレートに定義済み）:
 ```csharp
-var reloadButton = root.Q<Button>("version-reload-button");
-if (reloadButton != null)
+_appBar.CheckUpdateRequested += () =>
 {
-    reloadButton.tooltip = Loc("アップデートを再確認");
-    reloadButton.clicked += () =>
-    {
-        YourToolVersion.ForceRecheck();
-        LoadVersionResultFromSessionState(); // 即座に「確認中...」表示へ
-    };
-}
+    YourToolVersion.ForceRecheck();
+    LoadVersionResultFromSessionState(); // 即座に「確認中...」表示へ
+};
 ```
 
-> `↻` (U+21BB) は Unity 既定エディタフォントで描画できる。Unity 組み込みの
-> Refresh アイコンを使う場合は `reloadButton.style.backgroundImage` に
-> `EditorGUIUtility.IconContent("d_Refresh").image` を設定する。
+更新ありのときは、`ApplyVersionLabel` の最後で `_appBar.SetVersionClickable(update, update ? "クリックで配布ページを開く" : null)`
+を呼ぶ。`DennokoAppBar.ReleaseUrl`（`version.json` の `url` を入れてもよい）がクリックで開かれる。
+
+> 旧ヘッダー（`.dennoko-header`）の ↻ は `text="↻"` + `.dennoko-version-reload-button` で、テーマに残っている。
+> 新しく作るときは標準ヘッダーの `.dennoko-icon-button` を使う。
 
 ## 取得頻度とレート制限
 
