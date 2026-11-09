@@ -79,7 +79,7 @@ namespace YourNamespace   // ← 変更する
             _appBar = new DennokoAppBar(root, ToolName)
             {
                 ManualUrl  = "https://example.com/manual",     // ← 変更する
-                ReleaseUrl = "https://example.com/releases",   // ← 変更する
+                ReleaseUrl = "https://example.booth.pm/",      // ← 公開配布ページ（Booth 等）を指定（GitHub 直リンクは置かない）
                 ResetAll   = ResetAll,
                 AddToolMenuItems = menu =>
                 {

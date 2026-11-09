@@ -86,7 +86,7 @@ Editor/
 | バージョン + ↻ | 文言と状態クラスは `references/version-check-guide.md` の `ApplyVersionLabel` が入れる。更新ありのときだけラベルをクリックで配布ページを開く（`DennokoAppBar.ReleaseUrl`） |
 | 言語 | **切り替え先**の言語を出す文字ボタン 1 つ（日本語表示中は `EN`）。切り替えないツールは消す |
 | マニュアル `?` | `DennokoAppBar.ManualUrl` を開く |
-| 設定 `⋮` | メニューは「ツール固有の項目（`AddToolMenuItems`）→ 区切り → 設定を初期値に戻す…（確認あり）/ 更新を確認 / 配布ページを開く」 |
+| 設定 `⋮` | メニューは「ツール固有の項目（`AddToolMenuItems`）→ 区切り → 設定を初期値に戻す…（確認あり）/ 更新を確認」。三点リーダーからの配布ページ導線は含めず、GitHub リポジトリへの参照はツールの公開ページ（Booth 等）側のみに記載し、Unity ツール内からは直接 GitHub リンクへの導線を作らない方針とする |
 
 - 下罫線（`--dennoko-outline-subtle`）でスクロール領域と仕切るので、`.dennoko-separator` は足さない。
 - アイコンは `DennokoAppBar` が `DennokoIcons` で付ける（Unity 組み込みの `d_Refresh` / `d__Help` / `d__Menu`。見つからなければ ↻ / ? / ⋮ の文字）。名前はツールチップに出す。

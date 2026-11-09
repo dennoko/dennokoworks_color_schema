@@ -31,10 +31,12 @@ GitHub Public リポジトリ上の `version.json` を取得してローカル�
 ```json
 {
   "version": "1.0.0",
-  "url": "https://github.com/<owner>/<repo>/releases",
+  "url": "https://<your-shop>.booth.pm/",
   "message": ""
 }
 ```
+
+> **Note**: GitHub リポジトリへの参照はツールの公開ページ（Booth 等）側のみに記載し、Unity ツール内からは直接 GitHub リンクへの導線を作らない方針とする。`url` には公開配布ページ（Booth 等）を指定する（空文字でも可）。
 
 ## Step 2 — ヘッダー UXML
 
@@ -178,7 +180,7 @@ _appBar.CheckUpdateRequested += () =>
 ```
 
 更新ありのときは、`ApplyVersionLabel` の最後で `_appBar.SetVersionClickable(update, update ? "クリックで配布ページを開く" : null)`
-を呼ぶ。`DennokoAppBar.ReleaseUrl`（`version.json` の `url` を入れてもよい）がクリックで開かれる。
+を呼ぶ。`DennokoAppBar.ReleaseUrl`（`version.json` の `url` を入れてもよい。GitHub への直接リンクではなくツールの公開ページ（Booth 等）を指定する）がクリックで開かれる（URL が未設定または GitHub の場合はリンクを開かないようにする）。
 
 > 旧ヘッダー（`.dennoko-header`）の ↻ は `text="↻"` + `.dennoko-version-reload-button` で、テーマに残っている。
 > 新しく作るときは標準ヘッダーの `.dennoko-icon-button` を使う。
